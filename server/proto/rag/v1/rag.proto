@@ -1,0 +1,168 @@
+syntax = "proto3";
+
+package rag.v1;
+
+import "google/api/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option go_package = "github.com/knoguchi/rag/gen/rag/v1;ragv1";
+
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  info: {
+    title: "RAG Query API"
+    version: "1.0"
+    description: "Multi-tenant RAG service - Query and retrieval"
+  }
+  schemes: HTTP
+  schemes: HTTPS
+  consumes: "application/json"
+  produces: "application/json"
+};
+
+// RAGService provides query and retrieval operations
+service RAGService {
+  // Query retrieves context and generates an LLM response
+  rpc Query(QueryRequest) returns (QueryResponse) {
+    option (google.api.http) = {
+      post: "/v1/query"
+      body: "*"
+    };
+  }
+
+  // QueryStream streams the LLM response for interactive use (SSE via grpc-gateway)
+  rpc QueryStream(QueryRequest) returns (stream QueryStreamResponse) {
+    option (google.api.http) = {
+      post: "/v1/query/stream"
+      body: "*"
+    };
+  }
+
+  // Retrieve only retrieves relevant chunks without LLM generation
+  rpc Retrieve(RetrieveRequest) returns (RetrieveResponse) {
+    option (google.api.http) = {
+      post: "/v1/retrieve"
+      body: "*"
+    };
+  }
+}
+
+message QueryRequest {
+  string tenant_id = 1;
+  string query = 2;
+  QueryOptions options = 3;
+  // Session ID for conversation memory (optional).
+  // If provided, the system will remember previous exchanges in this session.
+  // If empty, the query is treated as stateless (no memory).
+  string session_id = 4;
+}
+
+message QueryOptions {
+  // Number of chunks to retrieve (overrides tenant config)
+  int32 top_k = 1;
+
+  // Minimum similarity score threshold (0.0 - 1.0)
+  float min_score = 2;
+
+  // System prompt for LLM (overrides tenant config)
+  string system_prompt = 3;
+
+  // Temperature for LLM generation (0.0 - 2.0)
+  float temperature = 4;
+
+  // Maximum tokens in response
+  int32 max_tokens = 5;
+}
+
+message QueryResponse {
+  string answer = 1;
+  repeated RetrievedChunk sources = 2;
+  QueryMetadata metadata = 3;
+}
+
+message RetrievedChunk {
+  string document_id = 1;
+  string chunk_id = 2;
+  string content = 3;
+  float score = 4;
+  string source = 5;              // Document source (URL, filename)
+  string title = 6;               // Document title
+  map<string, string> metadata = 7;
+}
+
+message QueryMetadata {
+  // Time taken for retrieval in milliseconds
+  int64 retrieval_time_ms = 1;
+
+  // Time taken for LLM generation in milliseconds
+  int64 generation_time_ms = 2;
+
+  // Total time in milliseconds
+  int64 total_time_ms = 3;
+
+  // Number of chunks retrieved
+  int32 chunks_retrieved = 4;
+
+  // Model used for generation
+  string model = 5;
+
+  // Tokens used in prompt
+  int32 prompt_tokens = 6;
+
+  // Tokens in completion
+  int32 completion_tokens = 7;
+}
+
+// QueryStreamResponse is sent as a stream for interactive queries
+message QueryStreamResponse {
+  oneof event {
+    // Sources are sent first before generation starts
+    RetrievedChunk source = 1;
+
+    // Token chunks from LLM generation
+    string token = 2;
+
+    // Final metadata sent after generation completes
+    QueryMetadata metadata = 3;
+
+    // Error if something goes wrong during streaming
+    StreamError error = 4;
+  }
+}
+
+message StreamError {
+  string code = 1;
+  string message = 2;
+}
+
+message RetrieveRequest {
+  string tenant_id = 1;
+  string query = 2;
+  RetrieveOptions options = 3;
+}
+
+message RetrieveOptions {
+  // Number of chunks to retrieve
+  int32 top_k = 1;
+
+  // Minimum similarity score threshold (0.0 - 1.0)
+  float min_score = 2;
+
+  // Filter by document IDs (optional)
+  repeated string document_ids = 3;
+}
+
+message RetrieveResponse {
+  repeated RetrievedChunk chunks = 1;
+  RetrieveMetadata metadata = 2;
+}
+
+message RetrieveMetadata {
+  // Time taken for retrieval in milliseconds
+  int64 retrieval_time_ms = 1;
+
+  // Number of chunks retrieved
+  int32 chunks_retrieved = 2;
+
+  // Total chunks searched
+  int32 total_chunks_searched = 3;
+}

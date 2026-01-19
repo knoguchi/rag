@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Demo Cloud Authentication - API keys, SSO, and access management">
+    <title>Authentication - Demo Cloud Docs</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="../index.html" class="logo">Demo Cloud</a>
+            <ul>
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="getting-started.html">Docs</a></li>
+                <li><a href="api-reference.html">API</a></li>
+                <li><a href="../pricing.html">Pricing</a></li>
+                <li><a href="../about.html">About</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main>
+        <div class="docs-container">
+            <aside class="sidebar">
+                <h3>Documentation</h3>
+                <ul>
+                    <li><a href="getting-started.html">Getting Started</a></li>
+                    <li><a href="api-reference.html">API Reference</a></li>
+                    <li><a href="compute.html">Demo Compute</a></li>
+                    <li><a href="storage.html">Demo Storage</a></li>
+                    <li><a href="database.html">Demo Database</a></li>
+                    <li><a href="authentication.html" class="active">Authentication</a></li>
+                    <li><a href="billing.html">Billing & Usage</a></li>
+                </ul>
+            </aside>
+
+            <article class="doc-content">
+                <h1>Authentication</h1>
+                <p>Demo Cloud provides multiple authentication methods to secure your resources and integrate with your existing identity systems.</p>
+
+                <h2>Authentication Methods</h2>
+                <ul>
+                    <li><strong>API Keys</strong>: For programmatic access and automation</li>
+                    <li><strong>OAuth 2.0</strong>: For web and mobile applications</li>
+                    <li><strong>SSO</strong>: Enterprise single sign-on with SAML or OIDC</li>
+                    <li><strong>Service Accounts</strong>: For server-to-server communication</li>
+                </ul>
+
+                <h2>API Keys</h2>
+                <p>API keys are the simplest way to authenticate with the Demo Cloud API.</p>
+
+                <h3>Creating an API Key</h3>
+                <pre><code># Create a new API key
+demo auth api-key create --name "Production Server"
+
+# Output:
+# API Key created successfully
+# Key ID: key_abc123xyz
+# Secret: sk_live_AbCdEf123456... (save this - shown only once)
+#
+# Add this to your Authorization header:
+# Authorization: Bearer sk_live_AbCdEf123456...</code></pre>
+
+                <h3>Managing API Keys</h3>
+                <pre><code># List all API keys
+demo auth api-key list
+
+# Revoke an API key
+demo auth api-key revoke key_abc123xyz
+
+# Rotate an API key (creates new secret)
+demo auth api-key rotate key_abc123xyz</code></pre>
+
+                <h3>API Key Scopes</h3>
+                <p>Limit what an API key can access by assigning scopes:</p>
+                <pre><code>demo auth api-key create \
+  --name "CI/CD Pipeline" \
+  --scopes compute:read,compute:write,storage:read</code></pre>
+
+                <p>Available scopes:</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Scope</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>*</td>
+                            <td>Full access (admin)</td>
+                        </tr>
+                        <tr>
+                            <td>compute:read</td>
+                            <td>Read compute resources</td>
+                        </tr>
+                        <tr>
+                            <td>compute:write</td>
+                            <td>Create/modify compute resources</td>
+                        </tr>
+                        <tr>
+                            <td>storage:read</td>
+                            <td>Read storage resources</td>
+                        </tr>
+                        <tr>
+                            <td>storage:write</td>
+                            <td>Create/modify storage resources</td>
+                        </tr>
+                        <tr>
+                            <td>database:read</td>
+                            <td>Read database resources</td>
+                        </tr>
+                        <tr>
+                            <td>database:write</td>
+                            <td>Create/modify database resources</td>
+                        </tr>
+                        <tr>
+                            <td>billing:read</td>
+                            <td>View billing information</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h2>OAuth 2.0</h2>
+                <p>Use OAuth 2.0 to let users authorize your application to access their Demo Cloud resources.</p>
+
+                <h3>Register Your Application</h3>
+                <pre><code>demo auth oauth create-app \
+  --name "My Web App" \
+  --redirect-uri "https://myapp.com/callback" \
+  --type web</code></pre>
+
+                <h3>Authorization Flow</h3>
+                <ol>
+                    <li>Redirect users to the authorization URL:
+                        <pre><code>https://auth.demo.cloud/oauth/authorize?
+  client_id=YOUR_CLIENT_ID&
+  redirect_uri=https://myapp.com/callback&
+  response_type=code&
+  scope=compute:read storage:read</code></pre>
+                    </li>
+                    <li>User authenticates and approves your app</li>
+                    <li>Demo Cloud redirects back with an authorization code</li>
+                    <li>Exchange the code for access tokens:
+                        <pre><code>curl -X POST https://auth.demo.cloud/oauth/token \
+  -d "grant_type=authorization_code" \
+  -d "code=AUTH_CODE" \
+  -d "client_id=YOUR_CLIENT_ID" \
+  -d "client_secret=YOUR_CLIENT_SECRET" \
+  -d "redirect_uri=https://myapp.com/callback"</code></pre>
+                    </li>
+                </ol>
+
+                <h2>Single Sign-On (SSO)</h2>
+                <p>Enterprise customers can integrate with their existing identity provider.</p>
+
+                <h3>SAML Configuration</h3>
+                <ol>
+                    <li>Go to <strong>Settings → Security → SSO</strong></li>
+                    <li>Select SAML 2.0</li>
+                    <li>Enter your IdP metadata URL or upload the XML</li>
+                    <li>Configure attribute mappings:
+                        <ul>
+                            <li>Email: <code>http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress</code></li>
+                            <li>Name: <code>http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name</code></li>
+                        </ul>
+                    </li>
+                    <li>Download the Demo Cloud SP metadata for your IdP</li>
+                </ol>
+
+                <h3>OIDC Configuration</h3>
+                <pre><code>demo auth sso configure \
+  --provider oidc \
+  --issuer "https://your-idp.com" \
+  --client-id "your-client-id" \
+  --client-secret "your-secret"</code></pre>
+
+                <h2>Service Accounts</h2>
+                <p>Service accounts are for non-human access, like CI/CD pipelines or backend services.</p>
+
+                <h3>Creating a Service Account</h3>
+                <pre><code>demo auth service-account create \
+  --name "GitHub Actions" \
+  --role deployer
+
+# Download credentials
+demo auth service-account key create sa_abc123 > credentials.json</code></pre>
+
+                <h3>Using Service Account Credentials</h3>
+                <pre><code># Set environment variable
+export ACME_CREDENTIALS=/path/to/credentials.json
+
+# Or use in code
+from demo import Client
+client = Client.from_service_account('/path/to/credentials.json')</code></pre>
+
+                <h2>Multi-Factor Authentication</h2>
+                <p>Add an extra layer of security with MFA.</p>
+
+                <h3>Enable MFA for Your Account</h3>
+                <pre><code>demo auth mfa enable</code></pre>
+                <p>This will display a QR code to scan with your authenticator app (Google Authenticator, Authy, etc.).</p>
+
+                <h3>Enforce MFA for Organization</h3>
+                <p>Require all team members to use MFA:</p>
+                <pre><code>demo org security mfa-required --enable</code></pre>
+
+                <h2>IP Allowlisting</h2>
+                <p>Restrict API access to specific IP addresses:</p>
+                <pre><code>demo auth ip-allowlist add 203.0.113.0/24 --name "Office Network"
+demo auth ip-allowlist add 198.51.100.42 --name "VPN Exit"
+
+# Enable enforcement
+demo auth ip-allowlist enforce --enable</code></pre>
+
+                <h2>Audit Logs</h2>
+                <p>All authentication events are logged for security auditing:</p>
+                <pre><code># View recent auth events
+demo auth audit-log --last 24h
+
+# Export for compliance
+demo auth audit-log --start 2024-01-01 --end 2024-01-31 --format csv > audit.csv</code></pre>
+
+                <h2>Best Practices</h2>
+                <ul>
+                    <li><strong>Rotate API keys regularly</strong>: Set up key rotation every 90 days</li>
+                    <li><strong>Use least-privilege scopes</strong>: Only grant the permissions needed</li>
+                    <li><strong>Enable MFA</strong>: Especially for accounts with admin access</li>
+                    <li><strong>Monitor audit logs</strong>: Set up alerts for suspicious activity</li>
+                    <li><strong>Use service accounts</strong>: Never embed personal credentials in code</li>
+                </ul>
+            </article>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Demo Cloud. All rights reserved.</p>
+    </footer>
+
+    <!-- AI Assistant -->
+    <script src="../rag-sdk.browser.js"></script>
+    <script>
+      new ChatWidget({
+        tenantId: '00000000-0000-0000-0000-000000000001',
+        baseUrl: 'http://localhost:8080'
+      });
+    </script>
+</body>
+</html>

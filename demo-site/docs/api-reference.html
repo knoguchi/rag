@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Demo Cloud API Reference - Complete REST API documentation">
+    <title>API Reference - Demo Cloud Docs</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="../index.html" class="logo">Demo Cloud</a>
+            <ul>
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="getting-started.html">Docs</a></li>
+                <li><a href="api-reference.html">API</a></li>
+                <li><a href="../pricing.html">Pricing</a></li>
+                <li><a href="../about.html">About</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main>
+        <div class="docs-container">
+            <aside class="sidebar">
+                <h3>Documentation</h3>
+                <ul>
+                    <li><a href="getting-started.html">Getting Started</a></li>
+                    <li><a href="api-reference.html" class="active">API Reference</a></li>
+                    <li><a href="compute.html">Demo Compute</a></li>
+                    <li><a href="storage.html">Demo Storage</a></li>
+                    <li><a href="database.html">Demo Database</a></li>
+                    <li><a href="authentication.html">Authentication</a></li>
+                    <li><a href="billing.html">Billing & Usage</a></li>
+                </ul>
+            </aside>
+
+            <article class="doc-content">
+                <h1>API Reference</h1>
+                <p>The Demo Cloud API is a RESTful API that allows you to programmatically manage all your cloud resources.</p>
+
+                <h2>Base URL</h2>
+                <pre><code>https://api.demo.cloud/v1</code></pre>
+
+                <h2>Authentication</h2>
+                <p>All API requests require authentication using an API key. Include your key in the Authorization header:</p>
+                <pre><code>Authorization: Bearer YOUR_API_KEY</code></pre>
+                <p>You can generate API keys in the <a href="https://console.demo.cloud/settings/api-keys">console settings</a>.</p>
+
+                <h2>Rate Limits</h2>
+                <p>API requests are rate limited based on your plan:</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Plan</th>
+                            <th>Requests/minute</th>
+                            <th>Burst limit</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Starter</td>
+                            <td>60</td>
+                            <td>100</td>
+                        </tr>
+                        <tr>
+                            <td>Pro</td>
+                            <td>300</td>
+                            <td>500</td>
+                        </tr>
+                        <tr>
+                            <td>Enterprise</td>
+                            <td>1000</td>
+                            <td>2000</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h2>Compute API</h2>
+
+                <h3>List Instances</h3>
+                <pre><code>GET /instances</code></pre>
+                <p>Returns a list of all compute instances in your project.</p>
+                <p><strong>Query Parameters:</strong></p>
+                <ul>
+                    <li><code>status</code> - Filter by status (running, stopped, pending)</li>
+                    <li><code>region</code> - Filter by region</li>
+                    <li><code>limit</code> - Maximum results (default: 20, max: 100)</li>
+                </ul>
+
+                <p><strong>Example Response:</strong></p>
+                <pre><code>{
+  "instances": [
+    {
+      "id": "inst_abc123",
+      "name": "web-server-1",
+      "status": "running",
+      "type": "standard-2",
+      "region": "us-east-1",
+      "ip_address": "203.0.113.42",
+      "created_at": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "total": 1,
+  "has_more": false
+}</code></pre>
+
+                <h3>Create Instance</h3>
+                <pre><code>POST /instances</code></pre>
+                <p>Creates a new compute instance.</p>
+                <p><strong>Request Body:</strong></p>
+                <pre><code>{
+  "name": "my-instance",
+  "type": "standard-2",
+  "region": "us-east-1",
+  "image": "ubuntu-22.04",
+  "ssh_keys": ["key_xyz789"]
+}</code></pre>
+
+                <h3>Get Instance</h3>
+                <pre><code>GET /instances/{instance_id}</code></pre>
+                <p>Returns details for a specific instance.</p>
+
+                <h3>Delete Instance</h3>
+                <pre><code>DELETE /instances/{instance_id}</code></pre>
+                <p>Terminates and deletes an instance. This action is irreversible.</p>
+
+                <h2>Storage API</h2>
+
+                <h3>List Buckets</h3>
+                <pre><code>GET /storage/buckets</code></pre>
+                <p>Returns a list of all storage buckets.</p>
+
+                <h3>Create Bucket</h3>
+                <pre><code>POST /storage/buckets</code></pre>
+                <p><strong>Request Body:</strong></p>
+                <pre><code>{
+  "name": "my-bucket",
+  "region": "us-east-1",
+  "public": false
+}</code></pre>
+
+                <h3>Upload Object</h3>
+                <pre><code>PUT /storage/buckets/{bucket}/objects/{key}</code></pre>
+                <p>Uploads a file to a bucket. Include the file contents in the request body with appropriate Content-Type header.</p>
+
+                <h3>Get Object</h3>
+                <pre><code>GET /storage/buckets/{bucket}/objects/{key}</code></pre>
+                <p>Downloads a file from a bucket.</p>
+
+                <h2>Database API</h2>
+
+                <h3>List Databases</h3>
+                <pre><code>GET /databases</code></pre>
+
+                <h3>Create Database</h3>
+                <pre><code>POST /databases</code></pre>
+                <p><strong>Request Body:</strong></p>
+                <pre><code>{
+  "name": "my-database",
+  "engine": "postgresql",
+  "version": "15",
+  "size": "db-standard-1",
+  "region": "us-east-1"
+}</code></pre>
+
+                <h2>Error Responses</h2>
+                <p>Errors are returned with appropriate HTTP status codes and a JSON body:</p>
+                <pre><code>{
+  "error": {
+    "code": "invalid_request",
+    "message": "The 'name' field is required",
+    "details": {
+      "field": "name"
+    }
+  }
+}</code></pre>
+
+                <p><strong>Common Error Codes:</strong></p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>HTTP Status</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>unauthorized</td>
+                            <td>401</td>
+                            <td>Invalid or missing API key</td>
+                        </tr>
+                        <tr>
+                            <td>forbidden</td>
+                            <td>403</td>
+                            <td>Insufficient permissions</td>
+                        </tr>
+                        <tr>
+                            <td>not_found</td>
+                            <td>404</td>
+                            <td>Resource not found</td>
+                        </tr>
+                        <tr>
+                            <td>rate_limited</td>
+                            <td>429</td>
+                            <td>Too many requests</td>
+                        </tr>
+                        <tr>
+                            <td>internal_error</td>
+                            <td>500</td>
+                            <td>Server error</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </article>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Demo Cloud. All rights reserved.</p>
+    </footer>
+
+    <!-- AI Assistant -->
+    <script src="../rag-sdk.browser.js"></script>
+    <script>
+      new ChatWidget({
+        tenantId: '00000000-0000-0000-0000-000000000001',
+        baseUrl: 'http://localhost:8080'
+      });
+    </script>
+</body>
+</html>

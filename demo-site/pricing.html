@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Demo Cloud Pricing - Simple, transparent pricing for all sizes">
+    <title>Pricing - Demo Cloud</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="index.html" class="logo">Demo Cloud</a>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="docs/getting-started.html">Docs</a></li>
+                <li><a href="docs/api-reference.html">API</a></li>
+                <li><a href="pricing.html">Pricing</a></li>
+                <li><a href="about.html">About</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main>
+        <section class="hero" style="margin-bottom: 3rem;">
+            <h1>Simple, Transparent Pricing</h1>
+            <p>Pay only for what you use. No hidden fees. No surprises.</p>
+        </section>
+
+        <section>
+            <h2>Plans</h2>
+            <div class="pricing-grid">
+                <div class="pricing-card">
+                    <h3>Starter</h3>
+                    <p class="price">$0<span>/month</span></p>
+                    <p>Free to get started</p>
+                    <ul>
+                        <li>$100 in free credits</li>
+                        <li>2 compute instances</li>
+                        <li>10 GB storage</li>
+                        <li>1 database (micro)</li>
+                        <li>Community support</li>
+                        <li>Basic monitoring</li>
+                    </ul>
+                    <a href="docs/getting-started.html" class="cta-button">Start Free</a>
+                </div>
+
+                <div class="pricing-card featured">
+                    <h3>Pro</h3>
+                    <p class="price">$49<span>/month</span></p>
+                    <p>For growing teams</p>
+                    <ul>
+                        <li>Everything in Starter</li>
+                        <li>Unlimited instances</li>
+                        <li>1 TB storage included</li>
+                        <li>5 databases</li>
+                        <li>Email support (24h response)</li>
+                        <li>Advanced monitoring</li>
+                        <li>Auto-scaling</li>
+                        <li>Custom domains</li>
+                    </ul>
+                    <a href="docs/getting-started.html" class="cta-button">Start Pro Trial</a>
+                </div>
+
+                <div class="pricing-card">
+                    <h3>Enterprise</h3>
+                    <p class="price">Custom</p>
+                    <p>For large organizations</p>
+                    <ul>
+                        <li>Everything in Pro</li>
+                        <li>Volume discounts</li>
+                        <li>Dedicated support team</li>
+                        <li>99.99% SLA</li>
+                        <li>SSO/SAML integration</li>
+                        <li>Compliance (SOC 2, HIPAA)</li>
+                        <li>Private networking</li>
+                        <li>Custom contracts</li>
+                    </ul>
+                    <a href="about.html" class="cta-button">Contact Sales</a>
+                </div>
+            </div>
+        </section>
+
+        <section style="margin-top: 4rem;">
+            <h2>Pay-As-You-Go Pricing</h2>
+            <p style="text-align: center; margin-bottom: 2rem;">All plans include pay-as-you-go pricing for resources beyond plan limits.</p>
+
+            <h3>Compute</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Instance Type</th>
+                        <th>vCPU</th>
+                        <th>Memory</th>
+                        <th>Price/Hour</th>
+                        <th>Price/Month*</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>standard-1</td>
+                        <td>1</td>
+                        <td>2 GB</td>
+                        <td>$0.02</td>
+                        <td>~$14</td>
+                    </tr>
+                    <tr>
+                        <td>standard-2</td>
+                        <td>2</td>
+                        <td>4 GB</td>
+                        <td>$0.04</td>
+                        <td>~$29</td>
+                    </tr>
+                    <tr>
+                        <td>standard-4</td>
+                        <td>4</td>
+                        <td>8 GB</td>
+                        <td>$0.08</td>
+                        <td>~$58</td>
+                    </tr>
+                    <tr>
+                        <td>standard-8</td>
+                        <td>8</td>
+                        <td>16 GB</td>
+                        <td>$0.16</td>
+                        <td>~$115</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p style="font-size: 0.9rem; color: #666;">*Monthly estimates based on 730 hours. Actual costs may vary.</p>
+
+            <h3 style="margin-top: 2rem;">Storage</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Storage Class</th>
+                        <th>Price/GB/Month</th>
+                        <th>Retrieval Cost</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Standard</td>
+                        <td>$0.023</td>
+                        <td>Free</td>
+                    </tr>
+                    <tr>
+                        <td>Infrequent Access</td>
+                        <td>$0.0125</td>
+                        <td>$0.01/GB</td>
+                    </tr>
+                    <tr>
+                        <td>Archive</td>
+                        <td>$0.004</td>
+                        <td>$0.03/GB</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3 style="margin-top: 2rem;">Database</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Size</th>
+                        <th>vCPU</th>
+                        <th>Memory</th>
+                        <th>Price/Month</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>db-micro</td>
+                        <td>1</td>
+                        <td>1 GB</td>
+                        <td>$15</td>
+                    </tr>
+                    <tr>
+                        <td>db-small</td>
+                        <td>1</td>
+                        <td>2 GB</td>
+                        <td>$30</td>
+                    </tr>
+                    <tr>
+                        <td>db-standard-1</td>
+                        <td>2</td>
+                        <td>4 GB</td>
+                        <td>$60</td>
+                    </tr>
+                    <tr>
+                        <td>db-standard-2</td>
+                        <td>4</td>
+                        <td>8 GB</td>
+                        <td>$120</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3 style="margin-top: 2rem;">Bandwidth</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Transfer Type</th>
+                        <th>Price/GB</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Inbound</td>
+                        <td>Free</td>
+                    </tr>
+                    <tr>
+                        <td>Outbound (first 10 GB/month)</td>
+                        <td>Free</td>
+                    </tr>
+                    <tr>
+                        <td>Outbound (10 GB - 10 TB)</td>
+                        <td>$0.09</td>
+                    </tr>
+                    <tr>
+                        <td>Outbound (10 TB - 50 TB)</td>
+                        <td>$0.085</td>
+                    </tr>
+                    <tr>
+                        <td>Outbound (50 TB+)</td>
+                        <td>$0.07</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section style="margin-top: 4rem; background: #f8f9fa; padding: 3rem; border-radius: 12px;">
+            <h2>Frequently Asked Questions</h2>
+
+            <h3>Is there a free trial?</h3>
+            <p>Yes! All new accounts receive $100 in free credits that never expire. This is enough to run a small application for several months.</p>
+
+            <h3>Can I change plans anytime?</h3>
+            <p>Absolutely. Upgrade or downgrade at any time. Changes take effect immediately, and you'll be prorated for any differences.</p>
+
+            <h3>What payment methods do you accept?</h3>
+            <p>We accept all major credit cards (Visa, Mastercard, American Express), debit cards, and ACH bank transfers. Enterprise customers can pay via wire transfer or purchase order.</p>
+
+            <h3>Is there a commitment?</h3>
+            <p>No commitments required. Pay-as-you-go pricing means you can scale up or down anytime. Reserved instances are available for those who want additional discounts.</p>
+
+            <h3>What happens if I exceed plan limits?</h3>
+            <p>You'll be billed at pay-as-you-go rates for any usage beyond your plan's included resources. We'll notify you before you exceed limits.</p>
+
+            <h3>Do you offer discounts for non-profits or education?</h3>
+            <p>Yes! We offer 50% discounts for qualified non-profit organizations and educational institutions. Contact us to apply.</p>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Demo Cloud. All rights reserved.</p>
+    </footer>
+
+    <!-- AI Assistant -->
+    <script src="./rag-sdk.browser.js"></script>
+    <script>
+      new ChatWidget({
+        tenantId: '00000000-0000-0000-0000-000000000001',
+        baseUrl: 'http://localhost:8080'
+      });
+    </script>
+</body>
+</html>

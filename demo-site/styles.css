@@ -1,0 +1,342 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background: #fafafa;
+}
+
+nav {
+    background: #fff;
+    padding: 1rem 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.nav-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    color: #333;
+    font-size: 1.5rem;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+nav ul {
+    display: flex;
+    list-style: none;
+    gap: 2rem;
+}
+
+nav a {
+    color: #666;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+nav a:hover {
+    color: #333;
+}
+
+main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.hero {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    border-radius: 12px;
+    margin-bottom: 3rem;
+}
+
+.hero h1 {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    color: #222;
+}
+
+.hero p {
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+    color: #666;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.cta-button {
+    display: inline-block;
+    background: #333;
+    color: #fff;
+    padding: 0.875rem 1.75rem;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+.cta-button:hover {
+    background: #555;
+}
+
+section {
+    margin-bottom: 4rem;
+}
+
+h2 {
+    font-size: 1.75rem;
+    margin-bottom: 2rem;
+    text-align: center;
+    color: #222;
+}
+
+.feature-grid, .product-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+.feature, .product {
+    background: #fff;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid #e5e5e5;
+}
+
+.feature h3, .product h3 {
+    margin-bottom: 0.75rem;
+    color: #222;
+    font-size: 1.1rem;
+}
+
+.feature p, .product p {
+    color: #666;
+    font-size: 0.95rem;
+}
+
+.product a {
+    color: #555;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.product a:hover {
+    text-decoration: underline;
+}
+
+footer {
+    background: #fff;
+    color: #666;
+    text-align: center;
+    padding: 2rem;
+    margin-top: 4rem;
+    border-top: 1px solid #e5e5e5;
+}
+
+/* Documentation pages */
+.docs-container {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 2rem;
+}
+
+.sidebar {
+    background: #fff;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid #e5e5e5;
+    height: fit-content;
+    position: sticky;
+    top: 80px;
+}
+
+.sidebar h3 {
+    margin-bottom: 1rem;
+    color: #222;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.sidebar ul {
+    list-style: none;
+}
+
+.sidebar li {
+    margin-bottom: 0.5rem;
+}
+
+.sidebar a {
+    color: #666;
+    text-decoration: none;
+    font-size: 0.95rem;
+}
+
+.sidebar a:hover, .sidebar a.active {
+    color: #333;
+}
+
+.doc-content {
+    max-width: 800px;
+    background: #fff;
+    padding: 2rem;
+    border-radius: 8px;
+    border: 1px solid #e5e5e5;
+}
+
+.doc-content h1 {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e5e5;
+    color: #222;
+}
+
+.doc-content h2 {
+    text-align: left;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    color: #222;
+    font-size: 1.4rem;
+}
+
+.doc-content h3 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: #333;
+    font-size: 1.1rem;
+}
+
+.doc-content p {
+    margin-bottom: 1rem;
+    color: #444;
+}
+
+.doc-content pre {
+    background: #2d2d2d;
+    color: #f8f8f2;
+    padding: 1rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin-bottom: 1rem;
+}
+
+.doc-content code {
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 0.85rem;
+}
+
+.doc-content ul, .doc-content ol {
+    margin-left: 1.5rem;
+    margin-bottom: 1rem;
+    color: #444;
+}
+
+.doc-content li {
+    margin-bottom: 0.5rem;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+}
+
+th, td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+th {
+    background: #fafafa;
+    font-weight: 600;
+    color: #333;
+}
+
+/* Pricing page */
+.pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+.pricing-card {
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    padding: 2rem;
+    text-align: center;
+}
+
+.pricing-card.featured {
+    border-color: #333;
+    border-width: 2px;
+    position: relative;
+}
+
+.pricing-card.featured::before {
+    content: 'Popular';
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: #fff;
+    padding: 0.25rem 1rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+}
+
+.pricing-card h3 {
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+    color: #222;
+}
+
+.price {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #222;
+}
+
+.price span {
+    font-size: 1rem;
+    color: #666;
+}
+
+.pricing-card ul {
+    list-style: none;
+    margin: 1.5rem 0;
+    text-align: left;
+}
+
+.pricing-card li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f0f0f0;
+    color: #555;
+    font-size: 0.95rem;
+}
+
+.pricing-card li::before {
+    content: '✓ ';
+    color: #4a4a4a;
+}

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Get started with Demo Cloud - Quick setup guide">
+    <title>Getting Started - Demo Cloud Docs</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="../index.html" class="logo">Demo Cloud</a>
+            <ul>
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="getting-started.html">Docs</a></li>
+                <li><a href="api-reference.html">API</a></li>
+                <li><a href="../pricing.html">Pricing</a></li>
+                <li><a href="../about.html">About</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main>
+        <div class="docs-container">
+            <aside class="sidebar">
+                <h3>Documentation</h3>
+                <ul>
+                    <li><a href="getting-started.html" class="active">Getting Started</a></li>
+                    <li><a href="api-reference.html">API Reference</a></li>
+                    <li><a href="compute.html">Demo Compute</a></li>
+                    <li><a href="storage.html">Demo Storage</a></li>
+                    <li><a href="database.html">Demo Database</a></li>
+                    <li><a href="authentication.html">Authentication</a></li>
+                    <li><a href="billing.html">Billing & Usage</a></li>
+                </ul>
+            </aside>
+
+            <article class="doc-content">
+                <h1>Getting Started with Demo Cloud</h1>
+                <p>Welcome to Demo Cloud! This guide will help you set up your account and deploy your first application in minutes.</p>
+
+                <h2>Prerequisites</h2>
+                <ul>
+                    <li>An Demo Cloud account (sign up at cloud.demo.com)</li>
+                    <li>The Demo CLI tool installed on your machine</li>
+                    <li>Basic familiarity with command line interfaces</li>
+                </ul>
+
+                <h2>Step 1: Install the Demo CLI</h2>
+                <p>The Demo CLI is the fastest way to interact with Demo Cloud services. Install it using your package manager:</p>
+
+                <h3>macOS (Homebrew)</h3>
+                <pre><code>brew install demo-cloud/tap/demo-cli</code></pre>
+
+                <h3>Linux (apt)</h3>
+                <pre><code>curl -fsSL https://packages.demo.cloud/gpg | sudo gpg --dearmor -o /usr/share/keyrings/demo.gpg
+echo "deb [signed-by=/usr/share/keyrings/demo.gpg] https://packages.demo.cloud/apt stable main" | sudo tee /etc/apt/sources.list.d/demo.list
+sudo apt update && sudo apt install demo-cli</code></pre>
+
+                <h3>Windows (Chocolatey)</h3>
+                <pre><code>choco install demo-cli</code></pre>
+
+                <h2>Step 2: Authenticate</h2>
+                <p>Log in to your Demo Cloud account using the CLI:</p>
+                <pre><code>demo login</code></pre>
+                <p>This will open a browser window for authentication. After logging in, your credentials will be stored securely on your machine.</p>
+
+                <h2>Step 3: Create Your First Project</h2>
+                <p>Create a new project to organize your resources:</p>
+                <pre><code>demo project create my-first-project
+demo project use my-first-project</code></pre>
+
+                <h2>Step 4: Deploy a Sample Application</h2>
+                <p>Let's deploy a simple web application:</p>
+                <pre><code># Clone our sample app
+git clone https://github.com/demo-cloud/sample-app.git
+cd sample-app
+
+# Deploy to Demo Cloud
+demo deploy</code></pre>
+                <p>The CLI will automatically detect your application type and configure the appropriate runtime.</p>
+
+                <h2>Step 5: View Your Application</h2>
+                <p>After deployment, you'll receive a URL where your application is running:</p>
+                <pre><code>✓ Deployment successful!
+  URL: https://my-first-project-abc123.demo.app
+  Status: Running
+  Region: us-east-1</code></pre>
+
+                <h2>Next Steps</h2>
+                <ul>
+                    <li><a href="compute.html">Learn about Demo Compute</a> - Configure VMs and containers</li>
+                    <li><a href="storage.html">Set up Demo Storage</a> - Store files and assets</li>
+                    <li><a href="database.html">Create a database</a> - Managed PostgreSQL, MySQL, or Redis</li>
+                    <li><a href="api-reference.html">Explore the API</a> - Programmatic access to all services</li>
+                </ul>
+
+                <h2>Getting Help</h2>
+                <p>If you run into any issues:</p>
+                <ul>
+                    <li>Check our <a href="https://status.demo.cloud">status page</a> for service updates</li>
+                    <li>Browse the <a href="https://community.demo.cloud">community forums</a></li>
+                    <li>Contact support at support@demo.cloud</li>
+                </ul>
+            </article>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Demo Cloud. All rights reserved.</p>
+    </footer>
+
+    <!-- AI Assistant -->
+    <script src="../rag-sdk.browser.js"></script>
+    <script>
+      new ChatWidget({
+        tenantId: '00000000-0000-0000-0000-000000000001',
+        baseUrl: 'http://localhost:8080'
+      });
+    </script>
+</body>
+</html>

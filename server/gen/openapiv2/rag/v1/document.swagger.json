@@ -1,0 +1,473 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "RAG Document API",
+    "description": "Multi-tenant RAG service - Document management",
+    "version": "1.0"
+  },
+  "tags": [
+    {
+      "name": "DocumentService"
+    }
+  ],
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/documents": {
+      "get": {
+        "summary": "ListDocuments lists documents for a tenant",
+        "operationId": "DocumentService_ListDocuments",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListDocumentsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pageToken",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "statusFilter",
+            "description": "Optional filter by status",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "DOCUMENT_STATUS_UNSPECIFIED",
+              "DOCUMENT_STATUS_PENDING",
+              "DOCUMENT_STATUS_PROCESSING",
+              "DOCUMENT_STATUS_READY",
+              "DOCUMENT_STATUS_FAILED"
+            ],
+            "default": "DOCUMENT_STATUS_UNSPECIFIED"
+          }
+        ],
+        "tags": [
+          "DocumentService"
+        ]
+      }
+    },
+    "/v1/documents/ingest": {
+      "post": {
+        "summary": "IngestDocument ingests raw text content",
+        "operationId": "DocumentService_IngestDocument",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1IngestDocumentResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1IngestDocumentRequest"
+            }
+          }
+        ],
+        "tags": [
+          "DocumentService"
+        ]
+      }
+    },
+    "/v1/documents/ingest-url": {
+      "post": {
+        "summary": "IngestURL fetches and ingests content from a URL",
+        "operationId": "DocumentService_IngestURL",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1IngestDocumentResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1IngestURLRequest"
+            }
+          }
+        ],
+        "tags": [
+          "DocumentService"
+        ]
+      }
+    },
+    "/v1/documents/{documentId}/chunks": {
+      "get": {
+        "summary": "GetDocumentChunks retrieves chunks for a document",
+        "operationId": "DocumentService_GetDocumentChunks",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetDocumentChunksResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pageToken",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "DocumentService"
+        ]
+      }
+    },
+    "/v1/documents/{id}": {
+      "get": {
+        "summary": "GetDocument retrieves a document by ID",
+        "operationId": "DocumentService_GetDocument",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1Document"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "DocumentService"
+        ]
+      },
+      "delete": {
+        "summary": "DeleteDocument deletes a document and its chunks",
+        "operationId": "DocumentService_DeleteDocument",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1DeleteDocumentResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "DocumentService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1DeleteDocumentResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        }
+      }
+    },
+    "v1Document": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "title": "URL or filename"
+        },
+        "title": {
+          "type": "string"
+        },
+        "contentHash": {
+          "type": "string",
+          "title": "SHA256 hash for deduplication"
+        },
+        "chunkCount": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "status": {
+          "$ref": "#/definitions/v1DocumentStatus"
+        },
+        "errorMessage": {
+          "type": "string",
+          "title": "Error details if status is FAILED"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "title": "Document represents an ingested document"
+    },
+    "v1DocumentChunk": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "documentId": {
+          "type": "string"
+        },
+        "chunkIndex": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "content": {
+          "type": "string"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "title": "DocumentChunk represents a chunk of a document"
+    },
+    "v1DocumentStatus": {
+      "type": "string",
+      "enum": [
+        "DOCUMENT_STATUS_UNSPECIFIED",
+        "DOCUMENT_STATUS_PENDING",
+        "DOCUMENT_STATUS_PROCESSING",
+        "DOCUMENT_STATUS_READY",
+        "DOCUMENT_STATUS_FAILED"
+      ],
+      "default": "DOCUMENT_STATUS_UNSPECIFIED",
+      "title": "DocumentStatus represents the processing status of a document"
+    },
+    "v1GetDocumentChunksResponse": {
+      "type": "object",
+      "properties": {
+        "chunks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1DocumentChunk"
+          }
+        },
+        "nextPageToken": {
+          "type": "string"
+        }
+      }
+    },
+    "v1IngestDocumentRequest": {
+      "type": "object",
+      "properties": {
+        "tenantId": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string",
+          "title": "Raw text content"
+        },
+        "title": {
+          "type": "string",
+          "title": "Optional title"
+        },
+        "source": {
+          "type": "string",
+          "title": "Optional source identifier"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1IngestDocumentResponse": {
+      "type": "object",
+      "properties": {
+        "documentId": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/v1DocumentStatus"
+        }
+      }
+    },
+    "v1IngestURLRequest": {
+      "type": "object",
+      "properties": {
+        "tenantId": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "useHeadless": {
+          "type": "boolean",
+          "title": "Use headless browser for JS-heavy sites"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1ListDocumentsResponse": {
+      "type": "object",
+      "properties": {
+        "documents": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Document"
+          }
+        },
+        "nextPageToken": {
+          "type": "string"
+        },
+        "totalCount": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Demo Database - Managed PostgreSQL, MySQL, and Redis">
+    <title>Demo Database - Demo Cloud Docs</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="../index.html" class="logo">Demo Cloud</a>
+            <ul>
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="getting-started.html">Docs</a></li>
+                <li><a href="api-reference.html">API</a></li>
+                <li><a href="../pricing.html">Pricing</a></li>
+                <li><a href="../about.html">About</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main>
+        <div class="docs-container">
+            <aside class="sidebar">
+                <h3>Documentation</h3>
+                <ul>
+                    <li><a href="getting-started.html">Getting Started</a></li>
+                    <li><a href="api-reference.html">API Reference</a></li>
+                    <li><a href="compute.html">Demo Compute</a></li>
+                    <li><a href="storage.html">Demo Storage</a></li>
+                    <li><a href="database.html" class="active">Demo Database</a></li>
+                    <li><a href="authentication.html">Authentication</a></li>
+                    <li><a href="billing.html">Billing & Usage</a></li>
+                </ul>
+            </aside>
+
+            <article class="doc-content">
+                <h1>Demo Database</h1>
+                <p>Demo Database provides fully managed database services with automatic backups, failover, and scaling. Focus on your application, not database administration.</p>
+
+                <h2>Supported Engines</h2>
+                <ul>
+                    <li><strong>PostgreSQL</strong>: Versions 12, 13, 14, 15, 16</li>
+                    <li><strong>MySQL</strong>: Versions 5.7, 8.0</li>
+                    <li><strong>Redis</strong>: Versions 6.2, 7.0</li>
+                </ul>
+
+                <h2>Instance Sizes</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Size</th>
+                            <th>vCPUs</th>
+                            <th>Memory</th>
+                            <th>Storage</th>
+                            <th>Price/month</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>db-micro</td>
+                            <td>1</td>
+                            <td>1 GB</td>
+                            <td>10 GB</td>
+                            <td>$15</td>
+                        </tr>
+                        <tr>
+                            <td>db-small</td>
+                            <td>1</td>
+                            <td>2 GB</td>
+                            <td>25 GB</td>
+                            <td>$30</td>
+                        </tr>
+                        <tr>
+                            <td>db-standard-1</td>
+                            <td>2</td>
+                            <td>4 GB</td>
+                            <td>50 GB</td>
+                            <td>$60</td>
+                        </tr>
+                        <tr>
+                            <td>db-standard-2</td>
+                            <td>4</td>
+                            <td>8 GB</td>
+                            <td>100 GB</td>
+                            <td>$120</td>
+                        </tr>
+                        <tr>
+                            <td>db-standard-4</td>
+                            <td>8</td>
+                            <td>16 GB</td>
+                            <td>200 GB</td>
+                            <td>$240</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h2>Creating a Database</h2>
+
+                <h3>PostgreSQL</h3>
+                <pre><code>demo database create my-postgres \
+  --engine postgresql \
+  --version 15 \
+  --size db-standard-1 \
+  --region us-east-1</code></pre>
+
+                <h3>MySQL</h3>
+                <pre><code>demo database create my-mysql \
+  --engine mysql \
+  --version 8.0 \
+  --size db-standard-1 \
+  --region us-east-1</code></pre>
+
+                <h3>Redis</h3>
+                <pre><code>demo database create my-redis \
+  --engine redis \
+  --version 7.0 \
+  --size db-standard-1 \
+  --region us-east-1</code></pre>
+
+                <h2>Connecting to Your Database</h2>
+                <p>After creating a database, get the connection details:</p>
+                <pre><code>demo database connection my-postgres</code></pre>
+                <p>Output:</p>
+                <pre><code>Host: my-postgres-abc123.db.demo.cloud
+Port: 5432
+Database: defaultdb
+Username: admin
+Password: ********
+Connection String: postgresql://admin:****@my-postgres-abc123.db.demo.cloud:5432/defaultdb</code></pre>
+
+                <h3>Connecting with psql</h3>
+                <pre><code>psql "postgresql://admin:PASSWORD@my-postgres-abc123.db.demo.cloud:5432/defaultdb?sslmode=require"</code></pre>
+
+                <h3>Connecting with Python</h3>
+                <pre><code>import psycopg2
+
+conn = psycopg2.connect(
+    host="my-postgres-abc123.db.demo.cloud",
+    port=5432,
+    database="defaultdb",
+    user="admin",
+    password="PASSWORD",
+    sslmode="require"
+)
+
+cursor = conn.cursor()
+cursor.execute("SELECT version();")
+print(cursor.fetchone())</code></pre>
+
+                <h2>High Availability</h2>
+                <p>Enable high availability for automatic failover to a standby replica:</p>
+                <pre><code>demo database create my-postgres \
+  --engine postgresql \
+  --version 15 \
+  --size db-standard-1 \
+  --high-availability</code></pre>
+                <p>With high availability enabled:</p>
+                <ul>
+                    <li>A standby replica is created in a different availability zone</li>
+                    <li>Synchronous replication ensures zero data loss</li>
+                    <li>Automatic failover occurs within 30 seconds of primary failure</li>
+                    <li>Connection strings automatically route to the active primary</li>
+                </ul>
+
+                <h2>Read Replicas</h2>
+                <p>Scale read traffic by adding read replicas:</p>
+                <pre><code># Create a read replica
+demo database replica create my-postgres-replica \
+  --source my-postgres \
+  --region us-west-2
+
+# List replicas
+demo database replica list my-postgres</code></pre>
+
+                <h2>Backups</h2>
+                <p>Automatic daily backups are enabled by default with 7-day retention.</p>
+
+                <h3>Configure Backup Settings</h3>
+                <pre><code>demo database backup configure my-postgres \
+  --retention-days 30 \
+  --backup-window "03:00-04:00"</code></pre>
+
+                <h3>Manual Backups</h3>
+                <pre><code># Create a manual backup
+demo database backup create my-postgres --name "before-migration"
+
+# List backups
+demo database backup list my-postgres
+
+# Restore from backup
+demo database restore my-postgres-restored \
+  --backup backup_abc123</code></pre>
+
+                <h2>Point-in-Time Recovery</h2>
+                <p>Restore your database to any point within the retention window:</p>
+                <pre><code>demo database restore my-postgres-recovered \
+  --source my-postgres \
+  --point-in-time "2024-01-15T10:30:00Z"</code></pre>
+
+                <h2>Connection Pooling</h2>
+                <p>Built-in connection pooling helps manage database connections efficiently:</p>
+                <pre><code>demo database pooler enable my-postgres \
+  --pool-mode transaction \
+  --pool-size 25</code></pre>
+                <p>Pooler connection string:</p>
+                <pre><code>postgresql://admin:****@my-postgres-abc123.pooler.db.demo.cloud:6432/defaultdb</code></pre>
+
+                <h2>Monitoring</h2>
+                <p>Monitor your database performance with built-in metrics:</p>
+                <ul>
+                    <li>CPU utilization</li>
+                    <li>Memory usage</li>
+                    <li>Storage space</li>
+                    <li>Connections count</li>
+                    <li>Query latency</li>
+                    <li>Replication lag (for replicas)</li>
+                </ul>
+                <pre><code># View current metrics
+demo database metrics my-postgres
+
+# View slow queries
+demo database slow-queries my-postgres --threshold 1s</code></pre>
+
+                <h2>Scaling</h2>
+                <p>Scale your database up or down with minimal downtime:</p>
+                <pre><code># Vertical scaling (changes instance size)
+demo database scale my-postgres --size db-standard-2
+
+# Increase storage
+demo database scale my-postgres --storage 200</code></pre>
+            </article>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Demo Cloud. All rights reserved.</p>
+    </footer>
+
+    <!-- AI Assistant -->
+    <script src="../rag-sdk.browser.js"></script>
+    <script>
+      new ChatWidget({
+        tenantId: '00000000-0000-0000-0000-000000000001',
+        baseUrl: 'http://localhost:8080'
+      });
+    </script>
+</body>
+</html>

@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Demo Compute - Virtual machines and container services">
+    <title>Demo Compute - Demo Cloud Docs</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="../index.html" class="logo">Demo Cloud</a>
+            <ul>
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="getting-started.html">Docs</a></li>
+                <li><a href="api-reference.html">API</a></li>
+                <li><a href="../pricing.html">Pricing</a></li>
+                <li><a href="../about.html">About</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main>
+        <div class="docs-container">
+            <aside class="sidebar">
+                <h3>Documentation</h3>
+                <ul>
+                    <li><a href="getting-started.html">Getting Started</a></li>
+                    <li><a href="api-reference.html">API Reference</a></li>
+                    <li><a href="compute.html" class="active">Demo Compute</a></li>
+                    <li><a href="storage.html">Demo Storage</a></li>
+                    <li><a href="database.html">Demo Database</a></li>
+                    <li><a href="authentication.html">Authentication</a></li>
+                    <li><a href="billing.html">Billing & Usage</a></li>
+                </ul>
+            </aside>
+
+            <article class="doc-content">
+                <h1>Demo Compute</h1>
+                <p>Demo Compute provides scalable virtual machines and container services for running your applications in the cloud.</p>
+
+                <h2>Instance Types</h2>
+                <p>Choose from a variety of instance types optimized for different workloads:</p>
+
+                <h3>Standard Instances</h3>
+                <p>Balanced compute, memory, and networking for general-purpose workloads.</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>vCPUs</th>
+                            <th>Memory</th>
+                            <th>Storage</th>
+                            <th>Price/hour</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>standard-1</td>
+                            <td>1</td>
+                            <td>2 GB</td>
+                            <td>50 GB SSD</td>
+                            <td>$0.02</td>
+                        </tr>
+                        <tr>
+                            <td>standard-2</td>
+                            <td>2</td>
+                            <td>4 GB</td>
+                            <td>100 GB SSD</td>
+                            <td>$0.04</td>
+                        </tr>
+                        <tr>
+                            <td>standard-4</td>
+                            <td>4</td>
+                            <td>8 GB</td>
+                            <td>200 GB SSD</td>
+                            <td>$0.08</td>
+                        </tr>
+                        <tr>
+                            <td>standard-8</td>
+                            <td>8</td>
+                            <td>16 GB</td>
+                            <td>400 GB SSD</td>
+                            <td>$0.16</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Memory-Optimized Instances</h3>
+                <p>High memory-to-CPU ratio for databases, caching, and in-memory analytics.</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>vCPUs</th>
+                            <th>Memory</th>
+                            <th>Storage</th>
+                            <th>Price/hour</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>memory-2</td>
+                            <td>2</td>
+                            <td>16 GB</td>
+                            <td>100 GB SSD</td>
+                            <td>$0.08</td>
+                        </tr>
+                        <tr>
+                            <td>memory-4</td>
+                            <td>4</td>
+                            <td>32 GB</td>
+                            <td>200 GB SSD</td>
+                            <td>$0.16</td>
+                        </tr>
+                        <tr>
+                            <td>memory-8</td>
+                            <td>8</td>
+                            <td>64 GB</td>
+                            <td>400 GB SSD</td>
+                            <td>$0.32</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Compute-Optimized Instances</h3>
+                <p>High CPU-to-memory ratio for compute-intensive workloads like batch processing and scientific computing.</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>vCPUs</th>
+                            <th>Memory</th>
+                            <th>Storage</th>
+                            <th>Price/hour</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>compute-4</td>
+                            <td>4</td>
+                            <td>4 GB</td>
+                            <td>100 GB SSD</td>
+                            <td>$0.06</td>
+                        </tr>
+                        <tr>
+                            <td>compute-8</td>
+                            <td>8</td>
+                            <td>8 GB</td>
+                            <td>200 GB SSD</td>
+                            <td>$0.12</td>
+                        </tr>
+                        <tr>
+                            <td>compute-16</td>
+                            <td>16</td>
+                            <td>16 GB</td>
+                            <td>400 GB SSD</td>
+                            <td>$0.24</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h2>Creating an Instance</h2>
+                <p>You can create instances via the CLI, API, or web console.</p>
+
+                <h3>Using the CLI</h3>
+                <pre><code># Create a standard instance
+demo compute create \
+  --name web-server \
+  --type standard-2 \
+  --image ubuntu-22.04 \
+  --region us-east-1
+
+# Create with SSH key
+demo compute create \
+  --name web-server \
+  --type standard-2 \
+  --image ubuntu-22.04 \
+  --ssh-key ~/.ssh/id_rsa.pub</code></pre>
+
+                <h3>Using the API</h3>
+                <pre><code>curl -X POST https://api.demo.cloud/v1/instances \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "web-server",
+    "type": "standard-2",
+    "image": "ubuntu-22.04",
+    "region": "us-east-1"
+  }'</code></pre>
+
+                <h2>Available Images</h2>
+                <p>Demo Compute supports a variety of operating system images:</p>
+                <ul>
+                    <li><strong>Ubuntu</strong>: ubuntu-22.04, ubuntu-20.04, ubuntu-18.04</li>
+                    <li><strong>Debian</strong>: debian-12, debian-11</li>
+                    <li><strong>CentOS</strong>: centos-stream-9, centos-stream-8</li>
+                    <li><strong>Fedora</strong>: fedora-39, fedora-38</li>
+                    <li><strong>Alpine</strong>: alpine-3.19, alpine-3.18</li>
+                    <li><strong>Windows Server</strong>: windows-2022, windows-2019</li>
+                </ul>
+
+                <h2>Networking</h2>
+                <p>Each instance gets:</p>
+                <ul>
+                    <li>A private IP address within your VPC</li>
+                    <li>Optional public IP address (IPv4 and/or IPv6)</li>
+                    <li>Up to 10 Gbps network bandwidth</li>
+                </ul>
+
+                <h3>Security Groups</h3>
+                <p>Control inbound and outbound traffic with security groups:</p>
+                <pre><code>demo security-group create web-sg \
+  --inbound "tcp:80:0.0.0.0/0" \
+  --inbound "tcp:443:0.0.0.0/0" \
+  --inbound "tcp:22:10.0.0.0/8"
+
+demo compute update web-server \
+  --security-groups web-sg</code></pre>
+
+                <h2>Auto-Scaling</h2>
+                <p>Automatically scale your instances based on CPU, memory, or custom metrics:</p>
+                <pre><code>demo autoscale create web-scale \
+  --min 2 \
+  --max 10 \
+  --metric cpu \
+  --target 70 \
+  --instance-type standard-2 \
+  --image ubuntu-22.04</code></pre>
+
+                <h2>Snapshots and Backups</h2>
+                <p>Create point-in-time snapshots of your instances:</p>
+                <pre><code># Create a snapshot
+demo compute snapshot create \
+  --instance web-server \
+  --name "before-upgrade"
+
+# Restore from snapshot
+demo compute create \
+  --name web-server-restored \
+  --snapshot snap_abc123</code></pre>
+            </article>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Demo Cloud. All rights reserved.</p>
+    </footer>
+
+    <!-- AI Assistant -->
+    <script src="../rag-sdk.browser.js"></script>
+    <script>
+      new ChatWidget({
+        tenantId: '00000000-0000-0000-0000-000000000001',
+        baseUrl: 'http://localhost:8080'
+      });
+    </script>
+</body>
+</html>

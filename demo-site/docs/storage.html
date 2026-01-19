@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Demo Storage - Object storage with high durability">
+    <title>Demo Storage - Demo Cloud Docs</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="../index.html" class="logo">Demo Cloud</a>
+            <ul>
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="getting-started.html">Docs</a></li>
+                <li><a href="api-reference.html">API</a></li>
+                <li><a href="../pricing.html">Pricing</a></li>
+                <li><a href="../about.html">About</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main>
+        <div class="docs-container">
+            <aside class="sidebar">
+                <h3>Documentation</h3>
+                <ul>
+                    <li><a href="getting-started.html">Getting Started</a></li>
+                    <li><a href="api-reference.html">API Reference</a></li>
+                    <li><a href="compute.html">Demo Compute</a></li>
+                    <li><a href="storage.html" class="active">Demo Storage</a></li>
+                    <li><a href="database.html">Demo Database</a></li>
+                    <li><a href="authentication.html">Authentication</a></li>
+                    <li><a href="billing.html">Billing & Usage</a></li>
+                </ul>
+            </aside>
+
+            <article class="doc-content">
+                <h1>Demo Storage</h1>
+                <p>Demo Storage is an S3-compatible object storage service with 99.999999999% (11 nines) durability. Store and retrieve any amount of data at any time.</p>
+
+                <h2>Key Features</h2>
+                <ul>
+                    <li><strong>Highly Durable</strong>: Data is automatically replicated across multiple facilities</li>
+                    <li><strong>Scalable</strong>: Store unlimited objects with no size limits</li>
+                    <li><strong>S3 Compatible</strong>: Use existing S3 tools and SDKs</li>
+                    <li><strong>Secure</strong>: Server-side encryption with your keys or ours</li>
+                    <li><strong>Cost-Effective</strong>: Pay only for what you use</li>
+                </ul>
+
+                <h2>Storage Classes</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Class</th>
+                            <th>Use Case</th>
+                            <th>Availability</th>
+                            <th>Price/GB/month</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Standard</td>
+                            <td>Frequently accessed data</td>
+                            <td>99.99%</td>
+                            <td>$0.023</td>
+                        </tr>
+                        <tr>
+                            <td>Infrequent Access</td>
+                            <td>Monthly access patterns</td>
+                            <td>99.9%</td>
+                            <td>$0.0125</td>
+                        </tr>
+                        <tr>
+                            <td>Archive</td>
+                            <td>Long-term storage</td>
+                            <td>99.9%</td>
+                            <td>$0.004</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h2>Creating a Bucket</h2>
+                <p>Buckets are containers for your objects. Each bucket name must be globally unique.</p>
+
+                <h3>Using the CLI</h3>
+                <pre><code># Create a bucket
+demo storage bucket create my-bucket --region us-east-1
+
+# List buckets
+demo storage bucket list
+
+# Delete a bucket (must be empty)
+demo storage bucket delete my-bucket</code></pre>
+
+                <h3>Using the API</h3>
+                <pre><code>curl -X POST https://api.demo.cloud/v1/storage/buckets \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "my-bucket",
+    "region": "us-east-1"
+  }'</code></pre>
+
+                <h2>Working with Objects</h2>
+
+                <h3>Upload Files</h3>
+                <pre><code># Upload a single file
+demo storage upload my-bucket/images/logo.png ./logo.png
+
+# Upload a directory
+demo storage upload my-bucket/assets/ ./assets/ --recursive
+
+# Upload with metadata
+demo storage upload my-bucket/report.pdf ./report.pdf \
+  --metadata "author=John,department=Sales"</code></pre>
+
+                <h3>Download Files</h3>
+                <pre><code># Download a file
+demo storage download my-bucket/images/logo.png ./logo.png
+
+# Download a directory
+demo storage download my-bucket/assets/ ./assets/ --recursive</code></pre>
+
+                <h3>List Objects</h3>
+                <pre><code># List all objects
+demo storage ls my-bucket
+
+# List with prefix
+demo storage ls my-bucket/images/
+
+# List with details
+demo storage ls my-bucket --long</code></pre>
+
+                <h2>Access Control</h2>
+                <p>Control who can access your buckets and objects with bucket policies and ACLs.</p>
+
+                <h3>Make a Bucket Public</h3>
+                <pre><code>demo storage bucket policy my-bucket --public-read</code></pre>
+
+                <h3>Generate Presigned URLs</h3>
+                <p>Share private objects temporarily with presigned URLs:</p>
+                <pre><code># Generate a download URL valid for 1 hour
+demo storage presign my-bucket/report.pdf --expires 1h
+
+# Generate an upload URL
+demo storage presign my-bucket/uploads/new-file.pdf \
+  --method PUT --expires 30m</code></pre>
+
+                <h2>S3 Compatibility</h2>
+                <p>Demo Storage is fully compatible with the S3 API. Use your favorite S3 tools:</p>
+
+                <h3>Using AWS CLI</h3>
+                <pre><code>aws configure set aws_access_key_id YOUR_ACCESS_KEY
+aws configure set aws_secret_access_key YOUR_SECRET_KEY
+
+aws s3 --endpoint-url https://storage.demo.cloud ls s3://my-bucket/
+aws s3 --endpoint-url https://storage.demo.cloud cp ./file.txt s3://my-bucket/</code></pre>
+
+                <h3>Using boto3 (Python)</h3>
+                <pre><code>import boto3
+
+s3 = boto3.client(
+    's3',
+    endpoint_url='https://storage.demo.cloud',
+    aws_access_key_id='YOUR_ACCESS_KEY',
+    aws_secret_access_key='YOUR_SECRET_KEY'
+)
+
+# Upload a file
+s3.upload_file('local-file.txt', 'my-bucket', 'remote-file.txt')
+
+# List objects
+response = s3.list_objects_v2(Bucket='my-bucket')
+for obj in response.get('Contents', []):
+    print(obj['Key'])</code></pre>
+
+                <h2>Lifecycle Policies</h2>
+                <p>Automatically transition or delete objects based on age:</p>
+                <pre><code>demo storage lifecycle my-bucket \
+  --transition-to-ia-days 30 \
+  --transition-to-archive-days 90 \
+  --expire-days 365</code></pre>
+
+                <h2>Versioning</h2>
+                <p>Keep multiple versions of objects to protect against accidental deletion:</p>
+                <pre><code># Enable versioning
+demo storage bucket versioning my-bucket --enable
+
+# List versions
+demo storage ls my-bucket/important-file.txt --versions
+
+# Restore a previous version
+demo storage restore my-bucket/important-file.txt --version v123</code></pre>
+
+                <h2>Encryption</h2>
+                <p>All data is encrypted at rest by default. You can also use your own keys:</p>
+                <pre><code># Upload with custom encryption key
+demo storage upload my-bucket/secret.txt ./secret.txt \
+  --sse-customer-key YOUR_BASE64_KEY</code></pre>
+            </article>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Demo Cloud. All rights reserved.</p>
+    </footer>
+
+    <!-- AI Assistant -->
+    <script src="../rag-sdk.browser.js"></script>
+    <script>
+      new ChatWidget({
+        tenantId: '00000000-0000-0000-0000-000000000001',
+        baseUrl: 'http://localhost:8080'
+      });
+    </script>
+</body>
+</html>

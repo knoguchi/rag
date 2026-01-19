@@ -1,0 +1,413 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "RAG Tenant API",
+    "description": "Multi-tenant RAG service - Tenant management",
+    "version": "1.0"
+  },
+  "tags": [
+    {
+      "name": "TenantService"
+    }
+  ],
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/tenants": {
+      "get": {
+        "summary": "ListTenants lists all tenants (admin only)",
+        "operationId": "TenantService_ListTenants",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListTenantsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pageToken",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "TenantService"
+        ]
+      },
+      "post": {
+        "summary": "CreateTenant creates a new tenant with default configuration",
+        "operationId": "TenantService_CreateTenant",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1Tenant"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CreateTenantRequest"
+            }
+          }
+        ],
+        "tags": [
+          "TenantService"
+        ]
+      }
+    },
+    "/v1/tenants/{id}": {
+      "get": {
+        "summary": "GetTenant retrieves a tenant by ID",
+        "operationId": "TenantService_GetTenant",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1Tenant"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "TenantService"
+        ]
+      },
+      "delete": {
+        "summary": "DeleteTenant deletes a tenant and all associated data",
+        "operationId": "TenantService_DeleteTenant",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1DeleteTenantResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "TenantService"
+        ]
+      },
+      "patch": {
+        "summary": "UpdateTenant updates tenant configuration",
+        "operationId": "TenantService_UpdateTenant",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1Tenant"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/TenantServiceUpdateTenantBody"
+            }
+          }
+        ],
+        "tags": [
+          "TenantService"
+        ]
+      }
+    },
+    "/v1/tenants/{id}/regenerate-key": {
+      "post": {
+        "summary": "RegenerateAPIKey generates a new API key for a tenant",
+        "operationId": "TenantService_RegenerateAPIKey",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1RegenerateAPIKeyResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "TenantService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "TenantServiceUpdateTenantBody": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "config": {
+          "$ref": "#/definitions/v1TenantConfig"
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1ChunkerConfig": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "type": "string",
+          "title": "Chunking method: \"semantic\", \"fixed\", \"sentence\""
+        },
+        "targetSize": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Target chunk size in tokens"
+        },
+        "maxSize": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Maximum chunk size in tokens"
+        },
+        "overlap": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Overlap between chunks in tokens"
+        }
+      }
+    },
+    "v1CreateTenantRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "config": {
+          "$ref": "#/definitions/v1TenantConfig"
+        },
+        "id": {
+          "type": "string",
+          "title": "Optional: specify a custom ID instead of generating one\nUseful for testing and deterministic tenant creation"
+        }
+      }
+    },
+    "v1DeleteTenantResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        }
+      }
+    },
+    "v1ListTenantsResponse": {
+      "type": "object",
+      "properties": {
+        "tenants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Tenant"
+          }
+        },
+        "nextPageToken": {
+          "type": "string"
+        }
+      }
+    },
+    "v1RegenerateAPIKeyResponse": {
+      "type": "object",
+      "properties": {
+        "apiKey": {
+          "type": "string"
+        }
+      }
+    },
+    "v1Tenant": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "apiKey": {
+          "type": "string"
+        },
+        "config": {
+          "$ref": "#/definitions/v1TenantConfig"
+        },
+        "usage": {
+          "$ref": "#/definitions/v1TenantUsage"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "v1TenantConfig": {
+      "type": "object",
+      "properties": {
+        "embeddingModel": {
+          "type": "string",
+          "title": "Embedding model to use (e.g., \"nomic-embed-text\", \"multilingual-e5-large\")"
+        },
+        "llmModel": {
+          "type": "string",
+          "title": "LLM model for generation (e.g., \"llama3.2\")"
+        },
+        "chunker": {
+          "$ref": "#/definitions/v1ChunkerConfig",
+          "title": "Chunking configuration"
+        },
+        "topK": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Number of chunks to retrieve for queries"
+        },
+        "minScore": {
+          "type": "number",
+          "format": "float",
+          "title": "Minimum similarity score threshold (0.0 - 1.0)"
+        },
+        "systemPrompt": {
+          "type": "string",
+          "title": "Default system prompt for RAG queries"
+        },
+        "rerankerEnabled": {
+          "type": "boolean",
+          "description": "Enable LLM-based reranking for improved relevance.\nTrade-off: +1-3s latency, ~2x LLM cost, but better accuracy."
+        }
+      }
+    },
+    "v1TenantUsage": {
+      "type": "object",
+      "properties": {
+        "documentCount": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "chunkCount": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "queryCountMonth": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    }
+  }
+}

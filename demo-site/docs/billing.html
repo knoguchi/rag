@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Demo Cloud Billing - Usage tracking, invoices, and cost management">
+    <title>Billing & Usage - Demo Cloud Docs</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="../index.html" class="logo">Demo Cloud</a>
+            <ul>
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="getting-started.html">Docs</a></li>
+                <li><a href="api-reference.html">API</a></li>
+                <li><a href="../pricing.html">Pricing</a></li>
+                <li><a href="../about.html">About</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main>
+        <div class="docs-container">
+            <aside class="sidebar">
+                <h3>Documentation</h3>
+                <ul>
+                    <li><a href="getting-started.html">Getting Started</a></li>
+                    <li><a href="api-reference.html">API Reference</a></li>
+                    <li><a href="compute.html">Demo Compute</a></li>
+                    <li><a href="storage.html">Demo Storage</a></li>
+                    <li><a href="database.html">Demo Database</a></li>
+                    <li><a href="authentication.html">Authentication</a></li>
+                    <li><a href="billing.html" class="active">Billing & Usage</a></li>
+                </ul>
+            </aside>
+
+            <article class="doc-content">
+                <h1>Billing & Usage</h1>
+                <p>Demo Cloud uses a pay-as-you-go billing model. You only pay for the resources you use, with no upfront costs or long-term commitments.</p>
+
+                <h2>Billing Cycle</h2>
+                <ul>
+                    <li>Bills are generated on the 1st of each month</li>
+                    <li>Payment is due within 15 days</li>
+                    <li>Usage is calculated hourly and aggregated monthly</li>
+                    <li>All prices are in USD</li>
+                </ul>
+
+                <h2>Understanding Your Bill</h2>
+                <p>Your monthly invoice includes charges for:</p>
+                <ul>
+                    <li><strong>Compute</strong>: Running instances (per hour)</li>
+                    <li><strong>Storage</strong>: Object storage (per GB/month)</li>
+                    <li><strong>Database</strong>: Managed databases (per hour)</li>
+                    <li><strong>Bandwidth</strong>: Outbound data transfer (per GB)</li>
+                    <li><strong>Add-ons</strong>: Support plans, monitoring, etc.</li>
+                </ul>
+
+                <h2>Viewing Usage</h2>
+
+                <h3>Current Month Usage</h3>
+                <pre><code>demo billing usage
+
+# Output:
+# Current Period: Jan 1 - Jan 17, 2024
+#
+# Service          Usage          Cost
+# ─────────────────────────────────────
+# Compute          1,234 hours    $98.72
+# Storage          500 GB         $11.50
+# Database         720 hours      $43.20
+# Bandwidth        150 GB         $13.50
+# ─────────────────────────────────────
+# Subtotal                        $166.92
+# Credits Applied                 -$50.00
+# Estimated Total                 $116.92</code></pre>
+
+                <h3>Usage by Resource</h3>
+                <pre><code>demo billing usage --detailed
+
+# Shows breakdown by individual resource:
+# Instance: web-server-1 (standard-2)
+#   Running: 408 hours
+#   Cost: $16.32
+#
+# Instance: api-server (standard-4)
+#   Running: 408 hours
+#   Cost: $32.64</code></pre>
+
+                <h2>Invoices</h2>
+                <pre><code># List recent invoices
+demo billing invoices
+
+# Download a specific invoice
+demo billing invoice download inv_2024_01 --format pdf</code></pre>
+
+                <h2>Payment Methods</h2>
+                <p>We accept:</p>
+                <ul>
+                    <li>Credit cards (Visa, Mastercard, American Express)</li>
+                    <li>Debit cards</li>
+                    <li>ACH bank transfer (US only)</li>
+                    <li>Wire transfer (Enterprise plans)</li>
+                </ul>
+
+                <h3>Managing Payment Methods</h3>
+                <pre><code># Add a credit card
+demo billing payment-method add
+
+# Set default payment method
+demo billing payment-method default pm_abc123
+
+# Remove a payment method
+demo billing payment-method remove pm_old456</code></pre>
+
+                <h2>Cost Optimization</h2>
+
+                <h3>Reserved Instances</h3>
+                <p>Save up to 50% by committing to 1 or 3 year terms:</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Term</th>
+                            <th>Payment</th>
+                            <th>Discount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>1 year</td>
+                            <td>Monthly</td>
+                            <td>25%</td>
+                        </tr>
+                        <tr>
+                            <td>1 year</td>
+                            <td>Upfront</td>
+                            <td>35%</td>
+                        </tr>
+                        <tr>
+                            <td>3 years</td>
+                            <td>Monthly</td>
+                            <td>40%</td>
+                        </tr>
+                        <tr>
+                            <td>3 years</td>
+                            <td>Upfront</td>
+                            <td>50%</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <pre><code># Purchase a reserved instance
+demo billing reservation create \
+  --type standard-4 \
+  --term 1-year \
+  --payment monthly \
+  --quantity 2</code></pre>
+
+                <h3>Spot Instances</h3>
+                <p>Save up to 80% on compute by using spare capacity:</p>
+                <pre><code>demo compute create batch-worker \
+  --type standard-4 \
+  --spot \
+  --max-price 0.05</code></pre>
+                <p><strong>Note:</strong> Spot instances can be terminated with 2 minutes notice when capacity is needed.</p>
+
+                <h2>Budgets and Alerts</h2>
+                <p>Set up budgets to track and control spending:</p>
+
+                <h3>Create a Budget</h3>
+                <pre><code>demo billing budget create \
+  --name "Monthly Limit" \
+  --amount 500 \
+  --period monthly \
+  --alert-at 50,80,100</code></pre>
+
+                <h3>Budget Alerts</h3>
+                <p>Receive notifications when spending reaches thresholds:</p>
+                <ul>
+                    <li>Email notifications to billing contacts</li>
+                    <li>Slack integration</li>
+                    <li>Webhook for custom integrations</li>
+                </ul>
+
+                <pre><code># Configure alert channels
+demo billing alerts configure \
+  --email billing@company.com \
+  --slack-webhook https://hooks.slack.com/...</code></pre>
+
+                <h2>Credits</h2>
+                <p>Credits can be applied from:</p>
+                <ul>
+                    <li>Promotional offers</li>
+                    <li>Referral program</li>
+                    <li>Support credits</li>
+                    <li>Partner programs</li>
+                </ul>
+
+                <pre><code># View credit balance
+demo billing credits
+
+# Apply a promotional code
+demo billing credits apply PROMO2024</code></pre>
+
+                <h2>Cost Allocation Tags</h2>
+                <p>Tag resources to track costs by project, team, or environment:</p>
+                <pre><code># Tag resources at creation
+demo compute create web-server \
+  --tags "project=website,team=engineering,env=production"
+
+# View costs by tag
+demo billing usage --group-by tag:project</code></pre>
+
+                <h2>Enterprise Billing</h2>
+                <p>Enterprise customers get additional features:</p>
+                <ul>
+                    <li><strong>Consolidated billing</strong>: Single invoice for multiple accounts</li>
+                    <li><strong>Custom payment terms</strong>: Net 30/60/90 options</li>
+                    <li><strong>Dedicated billing contact</strong>: Your own account manager</li>
+                    <li><strong>Custom contracts</strong>: Volume discounts and SLAs</li>
+                    <li><strong>Purchase orders</strong>: PO-based billing support</li>
+                </ul>
+
+                <h2>Tax Information</h2>
+                <p>Update your tax information for accurate invoicing:</p>
+                <pre><code>demo billing tax-info update \
+  --tax-id "US12-3456789" \
+  --business-name "Demo Corp" \
+  --address "123 Main St, San Francisco, CA 94105"</code></pre>
+
+                <p>Tax exemption certificates can be uploaded in the console under <strong>Settings → Billing → Tax Exemption</strong>.</p>
+
+                <h2>Getting Help</h2>
+                <p>For billing questions:</p>
+                <ul>
+                    <li>Email: billing@demo.cloud</li>
+                    <li>In-console chat (Pro and Enterprise plans)</li>
+                    <li>Phone support: 1-800-ACME-CLOUD (Enterprise only)</li>
+                </ul>
+            </article>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Demo Cloud. All rights reserved.</p>
+    </footer>
+
+    <!-- AI Assistant -->
+    <script src="../rag-sdk.browser.js"></script>
+    <script>
+      new ChatWidget({
+        tenantId: '00000000-0000-0000-0000-000000000001',
+        baseUrl: 'http://localhost:8080'
+      });
+    </script>
+</body>
+</html>

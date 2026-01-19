@@ -1,0 +1,403 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "RAG Query API",
+    "description": "Multi-tenant RAG service - Query and retrieval",
+    "version": "1.0"
+  },
+  "tags": [
+    {
+      "name": "RAGService"
+    }
+  ],
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/query": {
+      "post": {
+        "summary": "Query retrieves context and generates an LLM response",
+        "operationId": "RAGService_Query",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1QueryResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1QueryRequest"
+            }
+          }
+        ],
+        "tags": [
+          "RAGService"
+        ]
+      }
+    },
+    "/v1/query/stream": {
+      "post": {
+        "summary": "QueryStream streams the LLM response for interactive use (SSE via grpc-gateway)",
+        "operationId": "RAGService_QueryStream",
+        "responses": {
+          "200": {
+            "description": "A successful response.(streaming responses)",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "result": {
+                  "$ref": "#/definitions/v1QueryStreamResponse"
+                },
+                "error": {
+                  "$ref": "#/definitions/rpcStatus"
+                }
+              },
+              "title": "Stream result of v1QueryStreamResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1QueryRequest"
+            }
+          }
+        ],
+        "tags": [
+          "RAGService"
+        ]
+      }
+    },
+    "/v1/retrieve": {
+      "post": {
+        "summary": "Retrieve only retrieves relevant chunks without LLM generation",
+        "operationId": "RAGService_Retrieve",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1RetrieveResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1RetrieveRequest"
+            }
+          }
+        ],
+        "tags": [
+          "RAGService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1QueryMetadata": {
+      "type": "object",
+      "properties": {
+        "retrievalTimeMs": {
+          "type": "string",
+          "format": "int64",
+          "title": "Time taken for retrieval in milliseconds"
+        },
+        "generationTimeMs": {
+          "type": "string",
+          "format": "int64",
+          "title": "Time taken for LLM generation in milliseconds"
+        },
+        "totalTimeMs": {
+          "type": "string",
+          "format": "int64",
+          "title": "Total time in milliseconds"
+        },
+        "chunksRetrieved": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Number of chunks retrieved"
+        },
+        "model": {
+          "type": "string",
+          "title": "Model used for generation"
+        },
+        "promptTokens": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Tokens used in prompt"
+        },
+        "completionTokens": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Tokens in completion"
+        }
+      }
+    },
+    "v1QueryOptions": {
+      "type": "object",
+      "properties": {
+        "topK": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Number of chunks to retrieve (overrides tenant config)"
+        },
+        "minScore": {
+          "type": "number",
+          "format": "float",
+          "title": "Minimum similarity score threshold (0.0 - 1.0)"
+        },
+        "systemPrompt": {
+          "type": "string",
+          "title": "System prompt for LLM (overrides tenant config)"
+        },
+        "temperature": {
+          "type": "number",
+          "format": "float",
+          "title": "Temperature for LLM generation (0.0 - 2.0)"
+        },
+        "maxTokens": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Maximum tokens in response"
+        }
+      }
+    },
+    "v1QueryRequest": {
+      "type": "object",
+      "properties": {
+        "tenantId": {
+          "type": "string"
+        },
+        "query": {
+          "type": "string"
+        },
+        "options": {
+          "$ref": "#/definitions/v1QueryOptions"
+        },
+        "sessionId": {
+          "type": "string",
+          "description": "Session ID for conversation memory (optional).\nIf provided, the system will remember previous exchanges in this session.\nIf empty, the query is treated as stateless (no memory)."
+        }
+      }
+    },
+    "v1QueryResponse": {
+      "type": "object",
+      "properties": {
+        "answer": {
+          "type": "string"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1RetrievedChunk"
+          }
+        },
+        "metadata": {
+          "$ref": "#/definitions/v1QueryMetadata"
+        }
+      }
+    },
+    "v1QueryStreamResponse": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "$ref": "#/definitions/v1RetrievedChunk",
+          "title": "Sources are sent first before generation starts"
+        },
+        "token": {
+          "type": "string",
+          "title": "Token chunks from LLM generation"
+        },
+        "metadata": {
+          "$ref": "#/definitions/v1QueryMetadata",
+          "title": "Final metadata sent after generation completes"
+        },
+        "error": {
+          "$ref": "#/definitions/v1StreamError",
+          "title": "Error if something goes wrong during streaming"
+        }
+      },
+      "title": "QueryStreamResponse is sent as a stream for interactive queries"
+    },
+    "v1RetrieveMetadata": {
+      "type": "object",
+      "properties": {
+        "retrievalTimeMs": {
+          "type": "string",
+          "format": "int64",
+          "title": "Time taken for retrieval in milliseconds"
+        },
+        "chunksRetrieved": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Number of chunks retrieved"
+        },
+        "totalChunksSearched": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Total chunks searched"
+        }
+      }
+    },
+    "v1RetrieveOptions": {
+      "type": "object",
+      "properties": {
+        "topK": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Number of chunks to retrieve"
+        },
+        "minScore": {
+          "type": "number",
+          "format": "float",
+          "title": "Minimum similarity score threshold (0.0 - 1.0)"
+        },
+        "documentIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Filter by document IDs (optional)"
+        }
+      }
+    },
+    "v1RetrieveRequest": {
+      "type": "object",
+      "properties": {
+        "tenantId": {
+          "type": "string"
+        },
+        "query": {
+          "type": "string"
+        },
+        "options": {
+          "$ref": "#/definitions/v1RetrieveOptions"
+        }
+      }
+    },
+    "v1RetrieveResponse": {
+      "type": "object",
+      "properties": {
+        "chunks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1RetrievedChunk"
+          }
+        },
+        "metadata": {
+          "$ref": "#/definitions/v1RetrieveMetadata"
+        }
+      }
+    },
+    "v1RetrievedChunk": {
+      "type": "object",
+      "properties": {
+        "documentId": {
+          "type": "string"
+        },
+        "chunkId": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        },
+        "score": {
+          "type": "number",
+          "format": "float"
+        },
+        "source": {
+          "type": "string",
+          "title": "Document source (URL, filename)"
+        },
+        "title": {
+          "type": "string",
+          "title": "Document title"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1StreamError": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,166 @@
+syntax = "proto3";
+
+package rag.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option go_package = "github.com/knoguchi/rag/gen/rag/v1;ragv1";
+
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  info: {
+    title: "RAG Tenant API"
+    version: "1.0"
+    description: "Multi-tenant RAG service - Tenant management"
+  }
+  schemes: HTTP
+  schemes: HTTPS
+  consumes: "application/json"
+  produces: "application/json"
+};
+
+// TenantService manages tenant configuration and API keys
+service TenantService {
+  // CreateTenant creates a new tenant with default configuration
+  rpc CreateTenant(CreateTenantRequest) returns (Tenant) {
+    option (google.api.http) = {
+      post: "/v1/tenants"
+      body: "*"
+    };
+  }
+
+  // GetTenant retrieves a tenant by ID
+  rpc GetTenant(GetTenantRequest) returns (Tenant) {
+    option (google.api.http) = {
+      get: "/v1/tenants/{id}"
+    };
+  }
+
+  // ListTenants lists all tenants (admin only)
+  rpc ListTenants(ListTenantsRequest) returns (ListTenantsResponse) {
+    option (google.api.http) = {
+      get: "/v1/tenants"
+    };
+  }
+
+  // UpdateTenant updates tenant configuration
+  rpc UpdateTenant(UpdateTenantRequest) returns (Tenant) {
+    option (google.api.http) = {
+      patch: "/v1/tenants/{id}"
+      body: "*"
+    };
+  }
+
+  // DeleteTenant deletes a tenant and all associated data
+  rpc DeleteTenant(DeleteTenantRequest) returns (DeleteTenantResponse) {
+    option (google.api.http) = {
+      delete: "/v1/tenants/{id}"
+    };
+  }
+
+  // RegenerateAPIKey generates a new API key for a tenant
+  rpc RegenerateAPIKey(RegenerateAPIKeyRequest) returns (RegenerateAPIKeyResponse) {
+    option (google.api.http) = {
+      post: "/v1/tenants/{id}/regenerate-key"
+    };
+  }
+}
+
+message Tenant {
+  string id = 1;
+  string name = 2;
+  string api_key = 3;
+  TenantConfig config = 4;
+  TenantUsage usage = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+message TenantConfig {
+  // Embedding model to use (e.g., "nomic-embed-text", "multilingual-e5-large")
+  string embedding_model = 1;
+
+  // LLM model for generation (e.g., "llama3.2")
+  string llm_model = 2;
+
+  // Chunking configuration
+  ChunkerConfig chunker = 3;
+
+  // Number of chunks to retrieve for queries
+  int32 top_k = 4;
+
+  // Minimum similarity score threshold (0.0 - 1.0)
+  float min_score = 5;
+
+  // Default system prompt for RAG queries
+  string system_prompt = 6;
+
+  // Enable LLM-based reranking for improved relevance.
+  // Trade-off: +1-3s latency, ~2x LLM cost, but better accuracy.
+  bool reranker_enabled = 7;
+}
+
+message ChunkerConfig {
+  // Chunking method: "semantic", "fixed", "sentence"
+  string method = 1;
+
+  // Target chunk size in tokens
+  int32 target_size = 2;
+
+  // Maximum chunk size in tokens
+  int32 max_size = 3;
+
+  // Overlap between chunks in tokens
+  int32 overlap = 4;
+}
+
+message TenantUsage {
+  int32 document_count = 1;
+  int32 chunk_count = 2;
+  int64 query_count_month = 3;
+}
+
+message CreateTenantRequest {
+  string name = 1;
+  TenantConfig config = 2;
+  // Optional: specify a custom ID instead of generating one
+  // Useful for testing and deterministic tenant creation
+  string id = 3;
+}
+
+message GetTenantRequest {
+  string id = 1;
+}
+
+message ListTenantsRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+}
+
+message ListTenantsResponse {
+  repeated Tenant tenants = 1;
+  string next_page_token = 2;
+}
+
+message UpdateTenantRequest {
+  string id = 1;
+  string name = 2;
+  TenantConfig config = 3;
+}
+
+message DeleteTenantRequest {
+  string id = 1;
+}
+
+message DeleteTenantResponse {
+  bool success = 1;
+}
+
+message RegenerateAPIKeyRequest {
+  string id = 1;
+}
+
+message RegenerateAPIKeyResponse {
+  string api_key = 1;
+}

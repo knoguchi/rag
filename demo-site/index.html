@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Demo Cloud - Enterprise cloud solutions for modern businesses">
+    <title>Demo Cloud - Enterprise Cloud Solutions</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="index.html" class="logo">Demo Cloud</a>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="docs/getting-started.html">Docs</a></li>
+                <li><a href="docs/api-reference.html">API</a></li>
+                <li><a href="pricing.html">Pricing</a></li>
+                <li><a href="about.html">About</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main>
+        <section class="hero">
+            <h1>Enterprise Cloud Solutions</h1>
+            <p>Scale your business with Demo Cloud's reliable, secure, and high-performance infrastructure.</p>
+            <a href="docs/getting-started.html" class="cta-button">Get Started</a>
+        </section>
+
+        <section class="features">
+            <h2>Why Choose Demo Cloud?</h2>
+            <div class="feature-grid">
+                <div class="feature">
+                    <h3>Global Infrastructure</h3>
+                    <p>Deploy your applications across 25+ data centers worldwide. Our global network ensures low latency and high availability for your users.</p>
+                </div>
+                <div class="feature">
+                    <h3>Auto-Scaling</h3>
+                    <p>Automatically scale your resources based on demand. Pay only for what you use with our intelligent resource management.</p>
+                </div>
+                <div class="feature">
+                    <h3>Enterprise Security</h3>
+                    <p>SOC 2 Type II certified with end-to-end encryption, DDoS protection, and comprehensive audit logging.</p>
+                </div>
+                <div class="feature">
+                    <h3>24/7 Support</h3>
+                    <p>Our expert support team is available around the clock to help you with any issues or questions.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="products">
+            <h2>Our Products</h2>
+            <div class="product-list">
+                <div class="product">
+                    <h3>Demo Compute</h3>
+                    <p>Virtual machines with flexible configurations. Choose from standard, memory-optimized, or compute-optimized instances.</p>
+                    <a href="docs/compute.html">Learn more</a>
+                </div>
+                <div class="product">
+                    <h3>Demo Storage</h3>
+                    <p>Object storage with 99.999999999% durability. Perfect for backups, static assets, and data lakes.</p>
+                    <a href="docs/storage.html">Learn more</a>
+                </div>
+                <div class="product">
+                    <h3>Demo Database</h3>
+                    <p>Managed PostgreSQL, MySQL, and Redis with automatic backups, failover, and scaling.</p>
+                    <a href="docs/database.html">Learn more</a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Demo Cloud. All rights reserved.</p>
+    </footer>
+
+    <!-- AI Assistant -->
+    <script src="./rag-sdk.browser.js"></script>
+    <script>
+      new ChatWidget({
+        tenantId: '00000000-0000-0000-0000-000000000001',
+        baseUrl: 'http://localhost:8080'
+      });
+    </script>
+</body>
+</html>

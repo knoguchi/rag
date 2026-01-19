@@ -1,0 +1,44 @@
+{
+  "name": "rag-service-sdk",
+  "version": "1.0.0",
+  "description": "TypeScript SDK for RAG as a Service",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "browser": "dist/rag-sdk.browser.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./browser": {
+      "import": "./dist/rag-sdk.browser.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc && npm run build:browser",
+    "build:browser": "esbuild src/browser.ts --bundle --format=iife --global-name=RagSDK --outfile=dist/rag-sdk.browser.js --minify",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "rag",
+    "llm",
+    "ai",
+    "ai-assistant",
+    "embeddings"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "esbuild": "^0.20.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "marked": "^17.0.1"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "rag-crawler",
+  "version": "1.0.0",
+  "description": "Crawlee-based crawler for RAG document ingestion",
+  "type": "module",
+  "scripts": {
+    "crawl": "node crawl.js",
+    "build": "echo 'No build needed'"
+  },
+  "dependencies": {
+    "crawlee": "^3.11.0",
+    "playwright": "^1.48.0"
+  }
+}
