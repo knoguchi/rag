@@ -6,6 +6,8 @@ Note: this repo is a proof of concept. Further development is required to be pro
 
 Add an AI chat widget to any website. Multi-tenant RAG (Retrieval-Augmented Generation) system with a Go backend and TypeScript client SDK.
 
+![Demo of the RAG chat widget](docs/demo.png)
+
 ## Features
 
 **Backend**
@@ -26,17 +28,9 @@ Add an AI chat widget to any website. Multi-tenant RAG (Retrieval-Augmented Gene
 - HTML-to-Markdown conversion via Turndown
 - URL include/exclude patterns
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for technical details.
-
 ## Architecture
 
-```mermaid
-graph LR
-    A[Chat Widget] <--> B[RAG Service]
-    B --> C[Ollama]
-    B --> D[Qdrant]
-    B --> E[PostgreSQL]
-```
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for technical details.
 
 ## Prerequisites
 
