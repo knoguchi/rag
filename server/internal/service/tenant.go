@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -89,9 +90,7 @@ func (s *TenantService) CreateTenant(ctx context.Context, req *ragv1.CreateTenan
 	// The dimension depends on the embedding model; nomic-embed-text uses 768 dimensions
 	dimension := 768
 	if err := s.vectorStore.CreateCollection(ctx, tenant.ID.String(), dimension); err != nil {
-		// Log error but don't fail - collection can be created later
-		// In production, this should be handled more gracefully
-		_ = err
+		slog.Error("failed to create vector collection", "error", err, "tenant_id", tenant.ID)
 	}
 
 	return s.tenantToProto(tenant), nil
@@ -213,8 +212,7 @@ func (s *TenantService) DeleteTenant(ctx context.Context, req *ragv1.DeleteTenan
 
 	// Delete vector collection
 	if err := s.vectorStore.DeleteCollection(ctx, id.String()); err != nil {
-		// Log error but continue with tenant deletion
-		_ = err
+		slog.Warn("failed to delete vector collection", "error", err, "tenant_id", id)
 	}
 
 	if err := s.repo.Delete(ctx, id); err != nil {

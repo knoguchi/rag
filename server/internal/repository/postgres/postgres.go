@@ -33,6 +33,11 @@ func New(ctx context.Context, databaseURL string) (*DB, error) {
 	return &DB{Pool: pool}, nil
 }
 
+// Ping checks database connectivity.
+func (db *DB) Ping(ctx context.Context) error {
+	return db.Pool.Ping(ctx)
+}
+
 // Close closes the connection pool
 func (db *DB) Close() {
 	db.Pool.Close()

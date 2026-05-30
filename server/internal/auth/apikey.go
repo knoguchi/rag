@@ -223,15 +223,6 @@ func TenantFromContext(ctx context.Context) (*TenantInfo, bool) {
 	return tenant, ok
 }
 
-// MustTenantFromContext extracts tenant info from context or panics
-func MustTenantFromContext(ctx context.Context) *TenantInfo {
-	tenant, ok := TenantFromContext(ctx)
-	if !ok {
-		panic("tenant not found in context")
-	}
-	return tenant
-}
-
 // RequireTenant is a helper that returns an error if tenant is not in context
 func RequireTenant(ctx context.Context) (*TenantInfo, error) {
 	tenant, ok := TenantFromContext(ctx)

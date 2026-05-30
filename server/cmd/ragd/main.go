@@ -7,7 +7,9 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
+	"github.com/knoguchi/rag/internal/auth"
 	"github.com/knoguchi/rag/internal/config"
 	"github.com/knoguchi/rag/internal/embedder"
 	"github.com/knoguchi/rag/internal/llm"
@@ -43,6 +45,11 @@ func run() error {
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	// Validate configuration (rejects insecure defaults in non-development)
+	if err := cfg.Validate(); err != nil {
+		return fmt.Errorf("invalid configuration: %w", err)
 	}
 
 	slog.Info("starting RAG service",
@@ -85,6 +92,9 @@ func run() error {
 	)
 	slog.Info("initialized Ollama LLM", "model", cfg.OllamaLLMModel)
 
+	// Initialize auth interceptor
+	authInterceptor := auth.NewAPIKeyInterceptor(tenantRepo, cfg.AdminAPIKey)
+
 	// Initialize services
 	tenantSvc := service.NewTenantService(tenantRepo, vectorStore, cfg)
 	documentSvc := service.NewDocumentService(documentRepo, tenantRepo, embed, vectorStore)
@@ -92,8 +102,10 @@ func run() error {
 
 	// Create gRPC server
 	grpcServer, err := server.NewGRPCServer(server.GRPCServerConfig{
-		Port:   cfg.GRPCPort,
-		Logger: slog.Default(),
+		Port:            cfg.GRPCPort,
+		Logger:          slog.Default(),
+		AuthInterceptor: authInterceptor,
+		Environment:     cfg.Environment,
 	}, server.Services{
 		TenantService:   tenantSvc,
 		DocumentService: documentSvc,
@@ -108,7 +120,10 @@ func run() error {
 		Port:           cfg.HTTPPort,
 		GRPCAddr:       fmt.Sprintf("localhost:%d", cfg.GRPCPort),
 		Logger:         slog.Default(),
-		AllowedOrigins: []string{"*"}, // Configure in production
+		AllowedOrigins: cfg.CORSAllowedOrigins,
+		DBChecker:      db,
+		RateLimitRPS:   cfg.RateLimitRPS,
+		RateLimitBurst: cfg.RateLimitBurst,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create HTTP server: %w", err)
@@ -149,8 +164,13 @@ func run() error {
 
 	// Graceful shutdown
 	slog.Info("shutting down servers...")
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30)
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer shutdownCancel()
+
+	// Wait for in-flight document processing to complete
+	if err := documentSvc.Shutdown(shutdownCtx); err != nil {
+		slog.Warn("document processing shutdown timeout", "error", err)
+	}
 
 	if err := httpServer.Shutdown(shutdownCtx); err != nil {
 		slog.Error("failed to shutdown HTTP server", "error", err)

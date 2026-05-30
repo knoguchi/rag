@@ -26,8 +26,16 @@ type GRPCServer struct {
 
 // GRPCServerConfig holds configuration for the gRPC server
 type GRPCServerConfig struct {
-	Port   int
-	Logger *slog.Logger
+	Port            int
+	Logger          *slog.Logger
+	AuthInterceptor AuthInterceptor
+	Environment     string // "development", "production", etc.
+}
+
+// AuthInterceptor provides gRPC auth interceptors
+type AuthInterceptor interface {
+	UnaryInterceptor() grpc.UnaryServerInterceptor
+	StreamInterceptor() grpc.StreamServerInterceptor
 }
 
 // Services holds all gRPC service implementations
@@ -44,16 +52,27 @@ func NewGRPCServer(cfg GRPCServerConfig, services Services) (*GRPCServer, error)
 		logger = slog.Default()
 	}
 
+	// Build interceptor chains
+	unaryInterceptors := []grpc.UnaryServerInterceptor{
+		recoveryUnaryInterceptor(logger),
+	}
+	streamInterceptors := []grpc.StreamServerInterceptor{
+		recoveryStreamInterceptor(logger),
+	}
+
+	// Add auth interceptor if configured
+	if cfg.AuthInterceptor != nil {
+		unaryInterceptors = append(unaryInterceptors, cfg.AuthInterceptor.UnaryInterceptor())
+		streamInterceptors = append(streamInterceptors, cfg.AuthInterceptor.StreamInterceptor())
+	}
+
+	unaryInterceptors = append(unaryInterceptors, loggingUnaryInterceptor(logger))
+	streamInterceptors = append(streamInterceptors, loggingStreamInterceptor(logger))
+
 	// Create gRPC server with interceptors
 	server := grpc.NewServer(
-		grpc.ChainUnaryInterceptor(
-			recoveryUnaryInterceptor(logger),
-			loggingUnaryInterceptor(logger),
-		),
-		grpc.ChainStreamInterceptor(
-			recoveryStreamInterceptor(logger),
-			loggingStreamInterceptor(logger),
-		),
+		grpc.ChainUnaryInterceptor(unaryInterceptors...),
+		grpc.ChainStreamInterceptor(streamInterceptors...),
 	)
 
 	// Register services
@@ -72,8 +91,11 @@ func NewGRPCServer(cfg GRPCServerConfig, services Services) (*GRPCServer, error)
 		logger.Info("registered RAGService")
 	}
 
-	// Enable reflection for development/debugging
-	reflection.Register(server)
+	// Enable reflection for development/debugging only
+	if cfg.Environment == "" || cfg.Environment == "development" {
+		reflection.Register(server)
+		logger.Info("gRPC reflection enabled (development mode)")
+	}
 
 	return &GRPCServer{
 		server: server,

@@ -48,6 +48,31 @@ services:
               capabilities: [gpu]
     # Remove 'deploy' section if no GPU available
 
+  ragd:
+    build:
+      context: ../server
+      dockerfile: Dockerfile
+    container_name: rag-server
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+    environment:
+      ENVIRONMENT: production
+      DATABASE_URL: postgres://rag:rag@postgres:5432/rag?sslmode=disable
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_GRPC_URL: qdrant:6334
+      OLLAMA_URL: http://ollama:11434
+      ADMIN_API_KEY: ${ADMIN_API_KEY:?Set ADMIN_API_KEY in .env}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-*}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   qdrant_data:

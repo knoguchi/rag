@@ -26,14 +26,21 @@ type Store struct {
 	mu            sync.RWMutex
 	conversations map[string]*Conversation
 	maxMessages   int           // Max messages per conversation
+	maxSessions   int           // Max concurrent sessions
 	ttl           time.Duration // Time-to-live for conversations
 }
 
 // NewStore creates a new conversation memory store.
 func NewStore(maxMessages int, ttl time.Duration) *Store {
+	return NewStoreWithLimit(maxMessages, 10000, ttl)
+}
+
+// NewStoreWithLimit creates a store with explicit session limit.
+func NewStoreWithLimit(maxMessages, maxSessions int, ttl time.Duration) *Store {
 	s := &Store{
 		conversations: make(map[string]*Conversation),
 		maxMessages:   maxMessages,
+		maxSessions:   maxSessions,
 		ttl:           ttl,
 	}
 
@@ -45,6 +52,7 @@ func NewStore(maxMessages int, ttl time.Duration) *Store {
 
 // DefaultStore creates a store with sensible defaults.
 // - Max 20 messages per conversation (10 turns)
+// - Max 10000 concurrent sessions
 // - 1 hour TTL (session expires after 1 hour of inactivity)
 func DefaultStore() *Store {
 	return NewStore(20, 1*time.Hour)
@@ -66,6 +74,10 @@ func (s *Store) addMessage(sessionID, role, content string) {
 
 	conv, exists := s.conversations[sessionID]
 	if !exists {
+		// Evict oldest session if at capacity
+		if len(s.conversations) >= s.maxSessions {
+			s.evictOldest()
+		}
 		conv = &Conversation{
 			Messages:  make([]Message, 0),
 			CreatedAt: time.Now(),
@@ -126,6 +138,23 @@ func (s *Store) cleanupLoop() {
 
 	for range ticker.C {
 		s.cleanup()
+	}
+}
+
+// evictOldest removes the least recently updated session. Must be called with mu held.
+func (s *Store) evictOldest() {
+	var oldestID string
+	var oldestTime time.Time
+	first := true
+	for id, conv := range s.conversations {
+		if first || conv.UpdatedAt.Before(oldestTime) {
+			oldestID = id
+			oldestTime = conv.UpdatedAt
+			first = false
+		}
+	}
+	if oldestID != "" {
+		delete(s.conversations, oldestID)
 	}
 }
 

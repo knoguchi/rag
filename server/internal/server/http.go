@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -26,6 +28,12 @@ type HTTPServer struct {
 	port       int
 	grpcAddr   string
 	grpcConn   *grpc.ClientConn
+	dbChecker  HealthChecker
+}
+
+// HealthChecker can report whether a dependency is healthy.
+type HealthChecker interface {
+	Ping(ctx context.Context) error
 }
 
 // HTTPServerConfig holds configuration for the HTTP server
@@ -33,7 +41,10 @@ type HTTPServerConfig struct {
 	Port           int
 	GRPCAddr       string // Address of the gRPC server (e.g., "localhost:9090")
 	Logger         *slog.Logger
-	AllowedOrigins []string // CORS allowed origins
+	AllowedOrigins []string        // CORS allowed origins
+	DBChecker      HealthChecker   // Database health checker (optional)
+	RateLimitRPS   float64         // Requests per second per IP (0 = disabled)
+	RateLimitBurst int             // Burst capacity per IP
 }
 
 // NewHTTPServer creates a new HTTP server with grpc-gateway
@@ -49,6 +60,9 @@ func NewHTTPServer(cfg HTTPServerConfig) (*HTTPServer, error) {
 	// Add middleware
 	router.Use(middleware.RequestID)
 	router.Use(middleware.RealIP)
+	if cfg.RateLimitRPS > 0 {
+		router.Use(rateLimitMiddleware(cfg.RateLimitRPS, cfg.RateLimitBurst))
+	}
 	router.Use(requestLoggingMiddleware(logger))
 	router.Use(middleware.Recoverer)
 	router.Use(corsMiddleware(cfg.AllowedOrigins))
@@ -68,7 +82,7 @@ func NewHTTPServer(cfg HTTPServerConfig) (*HTTPServer, error) {
 
 	// Mount health check endpoint
 	router.Get("/healthz", healthCheckHandler())
-	router.Get("/readyz", readinessCheckHandler())
+	router.Get("/readyz", readinessCheckHandler(cfg.DBChecker))
 
 	// Mount grpc-gateway under root
 	router.Mount("/", gwMux)
@@ -82,12 +96,13 @@ func NewHTTPServer(cfg HTTPServerConfig) (*HTTPServer, error) {
 	}
 
 	return &HTTPServer{
-		server:   server,
-		router:   router,
-		gwMux:    gwMux,
-		logger:   logger,
-		port:     cfg.Port,
-		grpcAddr: cfg.GRPCAddr,
+		server:    server,
+		router:    router,
+		gwMux:     gwMux,
+		logger:    logger,
+		port:      cfg.Port,
+		grpcAddr:  cfg.GRPCAddr,
+		dbChecker: cfg.DBChecker,
 	}, nil
 }
 
@@ -235,13 +250,102 @@ func healthCheckHandler() http.HandlerFunc {
 }
 
 // readinessCheckHandler returns a handler for the /readyz endpoint
-func readinessCheckHandler() http.HandlerFunc {
+func readinessCheckHandler(dbChecker HealthChecker) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// TODO: Add actual readiness checks (database connectivity, etc.)
 		w.Header().Set("Content-Type", "application/json")
+
+		checks := map[string]string{}
+
+		if dbChecker != nil {
+			if err := dbChecker.Ping(r.Context()); err != nil {
+				checks["database"] = err.Error()
+				w.WriteHeader(http.StatusServiceUnavailable)
+				checks["status"] = "not ready"
+				json.NewEncoder(w).Encode(checks)
+				return
+			}
+			checks["database"] = "ok"
+		}
+
+		checks["status"] = "ready"
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{
-			"status": "ready",
+		json.NewEncoder(w).Encode(checks)
+	}
+}
+
+// ipBucket tracks request tokens for a single IP.
+type ipBucket struct {
+	tokens    float64
+	lastCheck time.Time
+	mu        sync.Mutex
+}
+
+// rateLimitMiddleware returns a per-IP token bucket rate limiter.
+func rateLimitMiddleware(rps float64, burst int) func(http.Handler) http.Handler {
+	var (
+		mu      sync.Mutex
+		buckets = make(map[string]*ipBucket)
+	)
+
+	// Periodic cleanup of stale entries
+	go func() {
+		for range time.Tick(5 * time.Minute) {
+			mu.Lock()
+			cutoff := time.Now().Add(-10 * time.Minute)
+			for ip, b := range buckets {
+				b.mu.Lock()
+				if b.lastCheck.Before(cutoff) {
+					delete(buckets, ip)
+				}
+				b.mu.Unlock()
+			}
+			mu.Unlock()
+		}
+	}()
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Skip health checks
+			if r.URL.Path == "/healthz" || r.URL.Path == "/readyz" {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+			if ip == "" {
+				ip = r.RemoteAddr
+			}
+
+			mu.Lock()
+			b, ok := buckets[ip]
+			if !ok {
+				b = &ipBucket{
+					tokens:    float64(burst),
+					lastCheck: time.Now(),
+				}
+				buckets[ip] = b
+			}
+			mu.Unlock()
+
+			b.mu.Lock()
+			now := time.Now()
+			elapsed := now.Sub(b.lastCheck).Seconds()
+			b.lastCheck = now
+			b.tokens += elapsed * rps
+			if b.tokens > float64(burst) {
+				b.tokens = float64(burst)
+			}
+
+			if b.tokens < 1 {
+				b.mu.Unlock()
+				w.Header().Set("Retry-After", "1")
+				http.Error(w, `{"error":"rate limit exceeded"}`, http.StatusTooManyRequests)
+				return
+			}
+			b.tokens--
+			b.mu.Unlock()
+
+			next.ServeHTTP(w, r)
 		})
 	}
 }

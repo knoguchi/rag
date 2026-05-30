@@ -7,9 +7,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -32,6 +34,7 @@ type DocumentService struct {
 	embedder   embedder.Embedder
 	vectorDB   vectorstore.VectorStore
 	httpClient *http.Client
+	wg         sync.WaitGroup
 }
 
 // NewDocumentService creates a new DocumentService
@@ -50,6 +53,23 @@ func NewDocumentService(
 	}
 }
 
+// Shutdown waits for all in-flight document processing goroutines to complete.
+func (s *DocumentService) Shutdown(ctx context.Context) error {
+	done := make(chan struct{})
+	go func() {
+		s.wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		slog.Info("all document processing goroutines completed")
+		return nil
+	case <-ctx.Done():
+		slog.Warn("shutdown timeout waiting for document processing")
+		return ctx.Err()
+	}
+}
+
 // IngestDocument ingests raw text content
 func (s *DocumentService) IngestDocument(ctx context.Context, req *ragv1.IngestDocumentRequest) (*ragv1.IngestDocumentResponse, error) {
 	if req.TenantId == "" {
@@ -57,6 +77,10 @@ func (s *DocumentService) IngestDocument(ctx context.Context, req *ragv1.IngestD
 	}
 	if req.Content == "" {
 		return nil, status.Error(codes.InvalidArgument, "content is required")
+	}
+	const maxContentSize = 10 * 1024 * 1024 // 10MB
+	if len(req.Content) > maxContentSize {
+		return nil, status.Errorf(codes.InvalidArgument, "content too large: %d bytes (max %d)", len(req.Content), maxContentSize)
 	}
 
 	tenantID, err := uuid.Parse(req.TenantId)
@@ -77,14 +101,17 @@ func (s *DocumentService) IngestDocument(ctx context.Context, req *ragv1.IngestD
 	// Include source URL in hash so different pages with similar content are not deduplicated
 	contentHash := hashContent(req.Source + "\n" + req.Content)
 
-	// Debug logging
-	fmt.Printf("[IngestDocument] tenant=%s source=%s contentLen=%d hash=%s\n",
-		tenantID.String(), req.Source, len(req.Content), contentHash[:16])
+	slog.Debug("ingesting document",
+		"tenant_id", tenantID,
+		"source", req.Source,
+		"content_len", len(req.Content),
+		"hash_prefix", contentHash[:16],
+	)
 
 	// Check for duplicate document (same source + content = true duplicate)
 	existingDoc, err := s.docRepo.GetByHash(ctx, tenantID, contentHash)
 	if err == nil && existingDoc != nil {
-		fmt.Printf("[IngestDocument] DUPLICATE FOUND: existing doc_id=%s\n", existingDoc.ID.String())
+		slog.Info("duplicate document found", "doc_id", existingDoc.ID)
 		return &ragv1.IngestDocumentResponse{
 			DocumentId: existingDoc.ID.String(),
 			Status:     convertStatus(existingDoc.Status),
@@ -118,7 +145,13 @@ func (s *DocumentService) IngestDocument(ctx context.Context, req *ragv1.IngestD
 	}
 
 	// Process document asynchronously
-	go s.processDocument(context.Background(), doc, req.Content, tenant)
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+		defer cancel()
+		s.processDocument(ctx, doc, req.Content, tenant)
+	}()
 
 	return &ragv1.IngestDocumentResponse{
 		DocumentId: docID.String(),
@@ -167,7 +200,13 @@ func (s *DocumentService) IngestURL(ctx context.Context, req *ragv1.IngestURLReq
 	}
 
 	// Fetch and process URL asynchronously
-	go s.processURL(context.Background(), doc, req.Url, req.UseHeadless, tenant)
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+		defer cancel()
+		s.processURL(ctx, doc, req.Url, req.UseHeadless, tenant)
+	}()
 
 	return &ragv1.IngestDocumentResponse{
 		DocumentId: docID.String(),
@@ -273,14 +312,12 @@ func (s *DocumentService) DeleteDocument(ctx context.Context, req *ragv1.DeleteD
 
 	// Delete vectors from vector store
 	if err := s.vectorDB.Delete(ctx, doc.TenantID.String(), doc.ID.String()); err != nil {
-		// Log error but continue with deletion
-		_ = err
+		slog.Warn("failed to delete vectors", "error", err, "doc_id", doc.ID)
 	}
 
 	// Delete chunks from repository
 	if err := s.docRepo.DeleteChunks(ctx, id); err != nil {
-		// Log error but continue with deletion
-		_ = err
+		slog.Warn("failed to delete chunks", "error", err, "doc_id", doc.ID)
 	}
 
 	// Delete document
@@ -345,7 +382,9 @@ func (s *DocumentService) processDocument(ctx context.Context, doc *repository.D
 	// Update status to PROCESSING
 	doc.Status = "PROCESSING"
 	doc.UpdatedAt = time.Now()
-	_ = s.docRepo.Update(ctx, doc)
+	if err := s.docRepo.Update(ctx, doc); err != nil {
+		slog.Error("failed to update document status", "error", err, "doc_id", doc.ID)
+	}
 
 	// Create ingestion pipeline with tenant config
 	pipeline := ingestion.NewPipeline(ingestion.PipelineConfig{
@@ -414,27 +453,33 @@ func (s *DocumentService) processDocument(ctx context.Context, doc *repository.D
 	doc.Status = "READY"
 	doc.ChunkCount = len(docChunks)
 	doc.UpdatedAt = time.Now()
-	_ = s.docRepo.Update(ctx, doc)
+	if err := s.docRepo.Update(ctx, doc); err != nil {
+		slog.Error("failed to mark document ready", "error", err, "doc_id", doc.ID)
+	}
 
 	// Update tenant usage
-	_ = s.tenantRepo.UpdateUsage(ctx, doc.TenantID, repository.TenantUsage{
+	if err := s.tenantRepo.UpdateUsage(ctx, doc.TenantID, repository.TenantUsage{
 		DocumentCount: 1, // Increment
 		ChunkCount:    len(docChunks),
-	})
+	}); err != nil {
+		slog.Warn("failed to update tenant usage", "error", err, "tenant_id", doc.TenantID)
+	}
 }
 
 // processURL fetches a URL and processes its content
-func (s *DocumentService) processURL(ctx context.Context, doc *repository.Document, url string, useHeadless bool, tenant *repository.Tenant) {
+func (s *DocumentService) processURL(ctx context.Context, doc *repository.Document, rawURL string, _ bool, tenant *repository.Tenant) {
 	// Update status to PROCESSING
 	doc.Status = "PROCESSING"
 	doc.UpdatedAt = time.Now()
-	_ = s.docRepo.Update(ctx, doc)
+	if err := s.docRepo.Update(ctx, doc); err != nil {
+		slog.Error("failed to update document status", "error", err, "doc_id", doc.ID)
+	}
 
 	// Note: useHeadless is ignored - for JS-heavy sites, use the standalone Playwright crawler
 	// and submit content via IngestDocument instead
 
 	// Fetch URL content with simple HTTP GET
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", rawURL, nil)
 	if err != nil {
 		s.markDocumentFailed(ctx, doc, fmt.Sprintf("failed to create request: %v", err))
 		return
@@ -453,9 +498,15 @@ func (s *DocumentService) processURL(ctx context.Context, doc *repository.Docume
 		return
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	const maxURLContentSize = 10 * 1024 * 1024 // 10MB
+	limitedReader := io.LimitReader(resp.Body, maxURLContentSize+1)
+	body, err := io.ReadAll(limitedReader)
 	if err != nil {
 		s.markDocumentFailed(ctx, doc, fmt.Sprintf("failed to read response: %v", err))
+		return
+	}
+	if len(body) > maxURLContentSize {
+		s.markDocumentFailed(ctx, doc, fmt.Sprintf("content too large: exceeds %d bytes", maxURLContentSize))
 		return
 	}
 
@@ -466,7 +517,7 @@ func (s *DocumentService) processURL(ctx context.Context, doc *repository.Docume
 	if title != "" {
 		doc.Title = title
 	} else {
-		doc.Title = url
+		doc.Title = rawURL
 	}
 
 	// Strip HTML tags for plain text content
@@ -514,10 +565,13 @@ func stripHTML(html string) string {
 
 // markDocumentFailed marks a document as failed with an error message
 func (s *DocumentService) markDocumentFailed(ctx context.Context, doc *repository.Document, errorMsg string) {
+	slog.Error("document processing failed", "doc_id", doc.ID, "error", errorMsg)
 	doc.Status = "FAILED"
 	doc.ErrorMessage = errorMsg
 	doc.UpdatedAt = time.Now()
-	_ = s.docRepo.Update(ctx, doc)
+	if err := s.docRepo.Update(ctx, doc); err != nil {
+		slog.Error("failed to mark document as failed", "error", err, "doc_id", doc.ID)
+	}
 }
 
 // hashContent generates a SHA-256 hash of content
