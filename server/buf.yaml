@@ -4,7 +4,13 @@ modules:
     name: buf.build/knoguchi/rag
 lint:
   use:
-    - DEFAULT
+    - STANDARD
+  except:
+    # Pre-existing API shape: several RPCs deliberately share messages
+    # (Query/QueryStream use one request; Get/Update return the resource).
+    - RPC_REQUEST_RESPONSE_UNIQUE
+    - RPC_REQUEST_STANDARD_NAME
+    - RPC_RESPONSE_STANDARD_NAME
 breaking:
   use:
     - FILE
