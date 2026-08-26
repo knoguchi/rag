@@ -88,6 +88,14 @@ docker-up-prod:
 run:
 	$(GOCMD) run ./cmd/ragd
 
+## reindex: Rebuild a tenant's vector collection as hybrid (TENANT=<uuid> or ALL=1)
+reindex:
+ifdef ALL
+	$(GOCMD) run ./cmd/ragreindex --all
+else
+	$(GOCMD) run ./cmd/ragreindex --tenant $(TENANT)
+endif
+
 ## migrate-up: Run database migrations
 migrate-up:
 	migrate -path internal/repository/postgres/migrations -database "$(DATABASE_URL)" up

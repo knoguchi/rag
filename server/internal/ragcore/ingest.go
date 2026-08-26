@@ -72,34 +72,49 @@ func (e *Engine) Ingest(ctx context.Context, in IngestInput, persist func([]Inge
 		}
 	}
 
+	if err := e.IndexChunks(ctx, in.Namespace, in.DocumentID, chunks, in.ChunkDefaults, in.Hybrid); err != nil {
+		return nil, err
+	}
+
+	return chunks, nil
+}
+
+// IndexChunks embeds pre-chunked content and upserts it into the vector
+// store. Used by Ingest and by reindexing tools that already have chunk
+// content persisted elsewhere.
+func (e *Engine) IndexChunks(ctx context.Context, namespace, documentID string, chunks []IngestedChunk, defaults map[string]string, hybrid bool) error {
+	if len(chunks) == 0 {
+		return nil
+	}
+
 	contents := make([]string, len(chunks))
 	for i, c := range chunks {
 		contents[i] = c.Content
 	}
 	embeddings, err := e.embedder.EmbedBatch(ctx, contents)
 	if err != nil {
-		return nil, fmt.Errorf("embedding failed: %w", err)
+		return fmt.Errorf("embedding failed: %w", err)
 	}
 
 	vectorChunks := make([]vectorstore.Chunk, len(chunks))
 	for i, c := range chunks {
-		metadata := make(map[string]string, len(c.Metadata)+len(in.ChunkDefaults)+1)
+		metadata := make(map[string]string, len(c.Metadata)+len(defaults)+1)
 		for k, v := range c.Metadata {
 			metadata[k] = v
 		}
-		for k, v := range in.ChunkDefaults {
+		for k, v := range defaults {
 			metadata[k] = v
 		}
-		metadata["document_id"] = in.DocumentID
+		metadata["document_id"] = documentID
 
 		var sparse *vectorstore.SparseVector
-		if in.Hybrid && e.sparse != nil {
+		if hybrid && e.sparse != nil {
 			sparse = e.sparse.Vectorize(c.Content)
 		}
 
 		vectorChunks[i] = vectorstore.Chunk{
 			ID:           c.ID,
-			DocumentID:   in.DocumentID,
+			DocumentID:   documentID,
 			Content:      c.Content,
 			Vector:       embeddings[i],
 			SparseVector: sparse,
@@ -107,9 +122,9 @@ func (e *Engine) Ingest(ctx context.Context, in IngestInput, persist func([]Inge
 		}
 	}
 
-	if err := e.store.Upsert(ctx, in.Namespace, vectorChunks); err != nil {
-		return nil, fmt.Errorf("vector storage failed: %w", err)
+	if err := e.store.Upsert(ctx, namespace, vectorChunks); err != nil {
+		return fmt.Errorf("vector storage failed: %w", err)
 	}
 
-	return chunks, nil
+	return nil
 }
