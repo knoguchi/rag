@@ -38,6 +38,9 @@ func (m *mockTenantRepo) UpdateAPIKey(context.Context, uuid.UUID, string) error 
 func (m *mockTenantRepo) UpdateUsage(context.Context, uuid.UUID, repository.TenantUsage) error {
 	return nil
 }
+func (m *mockTenantRepo) ListExpired(context.Context) ([]*repository.Tenant, error) {
+	return nil, nil
+}
 
 func newTestInterceptor() (*APIKeyInterceptor, *repository.Tenant) {
 	tenantID := uuid.New()

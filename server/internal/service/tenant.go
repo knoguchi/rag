@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -17,6 +18,7 @@ import (
 	"github.com/knoguchi/rag/internal/ragcore"
 	"github.com/knoguchi/rag/internal/ragcore/embedder"
 	"github.com/knoguchi/rag/internal/repository"
+	"github.com/oklog/ulid/v2"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -270,6 +272,66 @@ func (s *TenantService) RegenerateAPIKey(ctx context.Context, req *ragv1.Regener
 	}, nil
 }
 
+// Signup self-provisions a tenant from a client-generated install ULID.
+// Unauthenticated (the interceptor skips it) but disabled unless
+// SIGNUP_ENABLED is set, and covered by the global rate limiter. The ULID's
+// 128 bits become the tenant UUID, so one installation maps to one tenant;
+// signup tenants carry a retention policy and are reaped after inactivity.
+func (s *TenantService) Signup(ctx context.Context, req *ragv1.SignupRequest) (*ragv1.CreateTenantResponse, error) {
+	if !s.cfg.SignupEnabled {
+		return nil, status.Error(codes.PermissionDenied, "self-serve signup is disabled on this server")
+	}
+
+	installULID, err := ulid.ParseStrict(strings.ToUpper(strings.TrimSpace(req.InstallId)))
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "install_id must be a valid ULID")
+	}
+	tenantID := uuid.UUID(installULID)
+
+	// One tenant per installation
+	if _, err := s.repo.GetByID(ctx, tenantID); err == nil {
+		return nil, status.Error(codes.AlreadyExists,
+			"this installation is already registered; use its saved API key or regenerate the install ID")
+	}
+
+	name := strings.TrimSpace(req.Name)
+	if name == "" {
+		name = "Install " + installULID.String()[:10]
+	}
+
+	apiKey, err := generateAPIKey()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to generate API key: %v", err)
+	}
+
+	tenantConfig := s.buildTenantConfig(nil)
+	tenantConfig.RetentionDays = s.cfg.SignupRetentionDays
+
+	now := time.Now()
+	tenant := &repository.Tenant{
+		ID:        tenantID,
+		Name:      name,
+		Config:    tenantConfig,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	if err := s.repo.Create(ctx, tenant, apiKey); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to create tenant: %v", err)
+	}
+
+	if err := s.engine.CreateNamespace(ctx, tenant.ID.String()); err != nil {
+		slog.Error("failed to create vector collection", "error", err, "tenant_id", tenant.ID)
+	}
+
+	slog.Info("self-serve signup", "tenant_id", tenant.ID, "name", name,
+		"retention_days", tenantConfig.RetentionDays)
+
+	return &ragv1.CreateTenantResponse{
+		Tenant: s.tenantToProto(tenant),
+		ApiKey: apiKey,
+	}, nil
+}
+
 // requireSelfOrAdmin allows the admin key, or a tenant key matching the
 // target tenant ID.
 func requireSelfOrAdmin(ctx context.Context, id uuid.UUID) error {
@@ -352,6 +414,9 @@ func (s *TenantService) buildTenantConfig(protoConfig *ragv1.TenantConfig) repos
 	if protoConfig.ContextualRetrievalEnabled != nil {
 		config.ContextualRetrievalEnabled = *protoConfig.ContextualRetrievalEnabled
 	}
+	if protoConfig.RetentionDays > 0 {
+		config.RetentionDays = int(protoConfig.RetentionDays)
+	}
 
 	if protoConfig.Chunker != nil {
 		if protoConfig.Chunker.Method != "" {
@@ -396,6 +461,9 @@ func (s *TenantService) mergeConfig(existing repository.TenantConfig, protoConfi
 	}
 	if protoConfig.ContextualRetrievalEnabled != nil {
 		existing.ContextualRetrievalEnabled = *protoConfig.ContextualRetrievalEnabled
+	}
+	if protoConfig.RetentionDays > 0 {
+		existing.RetentionDays = int(protoConfig.RetentionDays)
 	}
 
 	if protoConfig.Chunker != nil {
@@ -483,6 +551,7 @@ func (s *TenantService) tenantToProto(t *repository.Tenant) *ragv1.Tenant {
 			RerankerEnabled:            &t.Config.RerankerEnabled,
 			HybridEnabled:              &t.Config.HybridEnabled,
 			ContextualRetrievalEnabled: &t.Config.ContextualRetrievalEnabled,
+			RetentionDays:              int32(t.Config.RetentionDays),
 		},
 		Usage: &ragv1.TenantUsage{
 			DocumentCount:   int32(t.Usage.DocumentCount),

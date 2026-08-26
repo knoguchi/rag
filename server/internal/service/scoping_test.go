@@ -125,6 +125,9 @@ func (f *fakeTenantRepo) UpdateAPIKey(context.Context, uuid.UUID, string) error 
 func (f *fakeTenantRepo) UpdateUsage(context.Context, uuid.UUID, repository.TenantUsage) error {
 	return nil
 }
+func (f *fakeTenantRepo) ListExpired(context.Context) ([]*repository.Tenant, error) {
+	return nil, nil
+}
 
 var _ repository.TenantRepository = (*fakeTenantRepo)(nil)
 

@@ -22,6 +22,39 @@
     "application/json"
   ],
   "paths": {
+    "/v1/signup": {
+      "post": {
+        "summary": "Signup self-provisions a tenant without authentication (must be enabled\nvia SIGNUP_ENABLED on the server; rate-limited). Intended for client\ninstallations (e.g. the browser extension) that generate an install\nULID and register themselves. Signup tenants expire after a period of\ninactivity; their documents and vectors are deleted.",
+        "operationId": "TenantService_Signup",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CreateTenantResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1SignupRequest"
+            }
+          }
+        ],
+        "tags": [
+          "TenantService"
+        ]
+      }
+    },
     "/v1/tenants": {
       "get": {
         "summary": "ListTenants lists all tenants (admin only)",
@@ -342,6 +375,19 @@
         }
       }
     },
+    "v1SignupRequest": {
+      "type": "object",
+      "properties": {
+        "installId": {
+          "type": "string",
+          "description": "Client-generated install identifier (ULID, 26 chars). Its 128 bits\nbecome the tenant UUID, so a given installation maps to one tenant."
+        },
+        "name": {
+          "type": "string",
+          "title": "Optional display name for the tenant"
+        }
+      }
+    },
     "v1Tenant": {
       "type": "object",
       "properties": {
@@ -411,6 +457,11 @@
         "contextualRetrievalEnabled": {
           "type": "boolean",
           "description": "Enable contextual retrieval: at ingestion, an LLM generates a short\nsituating context per chunk that is embedded with it.\nTrade-off: much slower ingestion (one LLM call per chunk)."
+        },
+        "retentionDays": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Days of inactivity after which the tenant and all its data are deleted.\n0 (default) means the tenant never expires. Set automatically for\nself-signup tenants."
         }
       }
     },

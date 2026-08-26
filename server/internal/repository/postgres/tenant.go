@@ -67,14 +67,54 @@ func (r *TenantRepo) GetByID(ctx context.Context, id uuid.UUID) (*repository.Ten
 	return r.scanTenant(ctx, query, id)
 }
 
-// GetByAPIKey retrieves a tenant by plaintext API key (hashed for lookup)
+// GetByAPIKey retrieves a tenant by plaintext API key (hashed for lookup).
+// Successful lookups refresh last_used_at (throttled) so idle-tenant
+// retention works.
 func (r *TenantRepo) GetByAPIKey(ctx context.Context, apiKey string) (*repository.Tenant, error) {
 	query := `
 		SELECT id, name, key_prefix, config, created_at, updated_at
 		FROM tenants
 		WHERE api_key_hash = $1
 	`
-	return r.scanTenant(ctx, query, hashAPIKey(apiKey))
+	tenant, err := r.scanTenant(ctx, query, hashAPIKey(apiKey))
+	if err == nil && tenant != nil {
+		// Best-effort activity touch, at most once per hour per tenant
+		_, _ = r.db.Pool.Exec(ctx,
+			`UPDATE tenants SET last_used_at = now() WHERE id = $1 AND last_used_at < now() - interval '1 hour'`,
+			tenant.ID)
+	}
+	return tenant, err
+}
+
+// ListExpired returns tenants with a lapsed retention policy
+func (r *TenantRepo) ListExpired(ctx context.Context) ([]*repository.Tenant, error) {
+	query := `
+		SELECT id, name, key_prefix, config, created_at, updated_at
+		FROM tenants
+		WHERE COALESCE((config->>'retention_days')::int, 0) > 0
+		  AND last_used_at < now() - make_interval(days => (config->>'retention_days')::int)
+	`
+	rows, err := r.db.Pool.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list expired tenants: %w", err)
+	}
+	defer rows.Close()
+
+	var tenants []*repository.Tenant
+	for rows.Next() {
+		var tenant repository.Tenant
+		var configJSON []byte
+		if err := rows.Scan(&tenant.ID, &tenant.Name, &tenant.KeyPrefix, &configJSON,
+			&tenant.CreatedAt, &tenant.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("failed to scan tenant: %w", err)
+		}
+		if err := json.Unmarshal(configJSON, &tenant.Config); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+		}
+		tenants = append(tenants, &tenant)
+	}
+
+	return tenants, nil
 }
 
 func (r *TenantRepo) scanTenant(ctx context.Context, query string, args ...any) (*repository.Tenant, error) {

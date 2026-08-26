@@ -142,8 +142,12 @@ type TenantConfig struct {
 	// situating context per chunk that is embedded with it.
 	// Trade-off: much slower ingestion (one LLM call per chunk).
 	ContextualRetrievalEnabled *bool `protobuf:"varint,9,opt,name=contextual_retrieval_enabled,json=contextualRetrievalEnabled,proto3,oneof" json:"contextual_retrieval_enabled,omitempty"`
-	unknownFields              protoimpl.UnknownFields
-	sizeCache                  protoimpl.SizeCache
+	// Days of inactivity after which the tenant and all its data are deleted.
+	// 0 (default) means the tenant never expires. Set automatically for
+	// self-signup tenants.
+	RetentionDays int32 `protobuf:"varint,10,opt,name=retention_days,json=retentionDays,proto3" json:"retention_days,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TenantConfig) Reset() {
@@ -237,6 +241,13 @@ func (x *TenantConfig) GetContextualRetrievalEnabled() bool {
 		return *x.ContextualRetrievalEnabled
 	}
 	return false
+}
+
+func (x *TenantConfig) GetRetentionDays() int32 {
+	if x != nil {
+		return x.RetentionDays
+	}
+	return 0
 }
 
 type ChunkerConfig struct {
@@ -783,6 +794,61 @@ func (x *DeleteTenantResponse) GetSuccess() bool {
 	return false
 }
 
+type SignupRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Client-generated install identifier (ULID, 26 chars). Its 128 bits
+	// become the tenant UUID, so a given installation maps to one tenant.
+	InstallId string `protobuf:"bytes,1,opt,name=install_id,json=installId,proto3" json:"install_id,omitempty"`
+	// Optional display name for the tenant
+	Name          string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SignupRequest) Reset() {
+	*x = SignupRequest{}
+	mi := &file_rag_v1_tenant_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SignupRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SignupRequest) ProtoMessage() {}
+
+func (x *SignupRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_rag_v1_tenant_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SignupRequest.ProtoReflect.Descriptor instead.
+func (*SignupRequest) Descriptor() ([]byte, []int) {
+	return file_rag_v1_tenant_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *SignupRequest) GetInstallId() string {
+	if x != nil {
+		return x.InstallId
+	}
+	return ""
+}
+
+func (x *SignupRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
 type RegenerateAPIKeyRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -792,7 +858,7 @@ type RegenerateAPIKeyRequest struct {
 
 func (x *RegenerateAPIKeyRequest) Reset() {
 	*x = RegenerateAPIKeyRequest{}
-	mi := &file_rag_v1_tenant_proto_msgTypes[12]
+	mi := &file_rag_v1_tenant_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -804,7 +870,7 @@ func (x *RegenerateAPIKeyRequest) String() string {
 func (*RegenerateAPIKeyRequest) ProtoMessage() {}
 
 func (x *RegenerateAPIKeyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_rag_v1_tenant_proto_msgTypes[12]
+	mi := &file_rag_v1_tenant_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -817,7 +883,7 @@ func (x *RegenerateAPIKeyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegenerateAPIKeyRequest.ProtoReflect.Descriptor instead.
 func (*RegenerateAPIKeyRequest) Descriptor() ([]byte, []int) {
-	return file_rag_v1_tenant_proto_rawDescGZIP(), []int{12}
+	return file_rag_v1_tenant_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *RegenerateAPIKeyRequest) GetId() string {
@@ -836,7 +902,7 @@ type RegenerateAPIKeyResponse struct {
 
 func (x *RegenerateAPIKeyResponse) Reset() {
 	*x = RegenerateAPIKeyResponse{}
-	mi := &file_rag_v1_tenant_proto_msgTypes[13]
+	mi := &file_rag_v1_tenant_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -848,7 +914,7 @@ func (x *RegenerateAPIKeyResponse) String() string {
 func (*RegenerateAPIKeyResponse) ProtoMessage() {}
 
 func (x *RegenerateAPIKeyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_rag_v1_tenant_proto_msgTypes[13]
+	mi := &file_rag_v1_tenant_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -861,7 +927,7 @@ func (x *RegenerateAPIKeyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegenerateAPIKeyResponse.ProtoReflect.Descriptor instead.
 func (*RegenerateAPIKeyResponse) Descriptor() ([]byte, []int) {
-	return file_rag_v1_tenant_proto_rawDescGZIP(), []int{13}
+	return file_rag_v1_tenant_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *RegenerateAPIKeyResponse) GetApiKey() string {
@@ -886,7 +952,7 @@ const file_rag_v1_tenant_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAtJ\x04\b\x03\x10\x04R\aapi_key\"\xc8\x03\n" +
+	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAtJ\x04\b\x03\x10\x04R\aapi_key\"\xef\x03\n" +
 	"\fTenantConfig\x12'\n" +
 	"\x0fembedding_model\x18\x01 \x01(\tR\x0eembeddingModel\x12\x1b\n" +
 	"\tllm_model\x18\x02 \x01(\tR\bllmModel\x12/\n" +
@@ -896,7 +962,9 @@ const file_rag_v1_tenant_proto_rawDesc = "" +
 	"\rsystem_prompt\x18\x06 \x01(\tR\fsystemPrompt\x12.\n" +
 	"\x10reranker_enabled\x18\a \x01(\bH\x00R\x0frerankerEnabled\x88\x01\x01\x12*\n" +
 	"\x0ehybrid_enabled\x18\b \x01(\bH\x01R\rhybridEnabled\x88\x01\x01\x12E\n" +
-	"\x1ccontextual_retrieval_enabled\x18\t \x01(\bH\x02R\x1acontextualRetrievalEnabled\x88\x01\x01B\x13\n" +
+	"\x1ccontextual_retrieval_enabled\x18\t \x01(\bH\x02R\x1acontextualRetrievalEnabled\x88\x01\x01\x12%\n" +
+	"\x0eretention_days\x18\n" +
+	" \x01(\x05R\rretentionDaysB\x13\n" +
 	"\x11_reranker_enabledB\x11\n" +
 	"\x0f_hybrid_enabledB\x1f\n" +
 	"\x1d_contextual_retrieval_enabled\"}\n" +
@@ -934,18 +1002,24 @@ const file_rag_v1_tenant_proto_rawDesc = "" +
 	"\x13DeleteTenantRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"0\n" +
 	"\x14DeleteTenantResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\")\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"B\n" +
+	"\rSignupRequest\x12\x1d\n" +
+	"\n" +
+	"install_id\x18\x01 \x01(\tR\tinstallId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\")\n" +
 	"\x17RegenerateAPIKeyRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"3\n" +
 	"\x18RegenerateAPIKeyResponse\x12\x17\n" +
-	"\aapi_key\x18\x01 \x01(\tR\x06apiKey2\xdf\x04\n" +
+	"\aapi_key\x18\x01 \x01(\tR\x06apiKey2\xb5\x05\n" +
 	"\rTenantService\x12a\n" +
 	"\fCreateTenant\x12\x1b.rag.v1.CreateTenantRequest\x1a\x1c.rag.v1.CreateTenantResponse\"\x16\x82\xd3\xe4\x93\x02\x10:\x01*\"\v/v1/tenants\x12O\n" +
 	"\tGetTenant\x12\x18.rag.v1.GetTenantRequest\x1a\x0e.rag.v1.Tenant\"\x18\x82\xd3\xe4\x93\x02\x12\x12\x10/v1/tenants/{id}\x12[\n" +
 	"\vListTenants\x12\x1a.rag.v1.ListTenantsRequest\x1a\x1b.rag.v1.ListTenantsResponse\"\x13\x82\xd3\xe4\x93\x02\r\x12\v/v1/tenants\x12X\n" +
 	"\fUpdateTenant\x12\x1b.rag.v1.UpdateTenantRequest\x1a\x0e.rag.v1.Tenant\"\x1b\x82\xd3\xe4\x93\x02\x15:\x01*2\x10/v1/tenants/{id}\x12c\n" +
 	"\fDeleteTenant\x12\x1b.rag.v1.DeleteTenantRequest\x1a\x1c.rag.v1.DeleteTenantResponse\"\x18\x82\xd3\xe4\x93\x02\x12*\x10/v1/tenants/{id}\x12~\n" +
-	"\x10RegenerateAPIKey\x12\x1f.rag.v1.RegenerateAPIKeyRequest\x1a .rag.v1.RegenerateAPIKeyResponse\"'\x82\xd3\xe4\x93\x02!\"\x1f/v1/tenants/{id}/regenerate-keyB\xec\x01\x92Am\x12C\n" +
+	"\x10RegenerateAPIKey\x12\x1f.rag.v1.RegenerateAPIKeyRequest\x1a .rag.v1.RegenerateAPIKeyResponse\"'\x82\xd3\xe4\x93\x02!\"\x1f/v1/tenants/{id}/regenerate-key\x12T\n" +
+	"\x06Signup\x12\x15.rag.v1.SignupRequest\x1a\x1c.rag.v1.CreateTenantResponse\"\x15\x82\xd3\xe4\x93\x02\x0f:\x01*\"\n" +
+	"/v1/signupB\xec\x01\x92Am\x12C\n" +
 	"\x0eRAG Tenant API\x12,Multi-tenant RAG service - Tenant management2\x031.0*\x02\x01\x022\x10application/json:\x10application/json\n" +
 	"\n" +
 	"com.rag.v1B\vTenantProtoP\x01Z(github.com/knoguchi/rag/gen/rag/v1;ragv1\xa2\x02\x03RXX\xaa\x02\x06Rag.V1\xca\x02\x06Rag\\V1\xe2\x02\x12Rag\\V1\\GPBMetadata\xea\x02\aRag::V1b\x06proto3"
@@ -962,7 +1036,7 @@ func file_rag_v1_tenant_proto_rawDescGZIP() []byte {
 	return file_rag_v1_tenant_proto_rawDescData
 }
 
-var file_rag_v1_tenant_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_rag_v1_tenant_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_rag_v1_tenant_proto_goTypes = []any{
 	(*Tenant)(nil),                   // 0: rag.v1.Tenant
 	(*TenantConfig)(nil),             // 1: rag.v1.TenantConfig
@@ -976,15 +1050,16 @@ var file_rag_v1_tenant_proto_goTypes = []any{
 	(*UpdateTenantRequest)(nil),      // 9: rag.v1.UpdateTenantRequest
 	(*DeleteTenantRequest)(nil),      // 10: rag.v1.DeleteTenantRequest
 	(*DeleteTenantResponse)(nil),     // 11: rag.v1.DeleteTenantResponse
-	(*RegenerateAPIKeyRequest)(nil),  // 12: rag.v1.RegenerateAPIKeyRequest
-	(*RegenerateAPIKeyResponse)(nil), // 13: rag.v1.RegenerateAPIKeyResponse
-	(*timestamppb.Timestamp)(nil),    // 14: google.protobuf.Timestamp
+	(*SignupRequest)(nil),            // 12: rag.v1.SignupRequest
+	(*RegenerateAPIKeyRequest)(nil),  // 13: rag.v1.RegenerateAPIKeyRequest
+	(*RegenerateAPIKeyResponse)(nil), // 14: rag.v1.RegenerateAPIKeyResponse
+	(*timestamppb.Timestamp)(nil),    // 15: google.protobuf.Timestamp
 }
 var file_rag_v1_tenant_proto_depIdxs = []int32{
 	1,  // 0: rag.v1.Tenant.config:type_name -> rag.v1.TenantConfig
 	3,  // 1: rag.v1.Tenant.usage:type_name -> rag.v1.TenantUsage
-	14, // 2: rag.v1.Tenant.created_at:type_name -> google.protobuf.Timestamp
-	14, // 3: rag.v1.Tenant.updated_at:type_name -> google.protobuf.Timestamp
+	15, // 2: rag.v1.Tenant.created_at:type_name -> google.protobuf.Timestamp
+	15, // 3: rag.v1.Tenant.updated_at:type_name -> google.protobuf.Timestamp
 	2,  // 4: rag.v1.TenantConfig.chunker:type_name -> rag.v1.ChunkerConfig
 	1,  // 5: rag.v1.CreateTenantRequest.config:type_name -> rag.v1.TenantConfig
 	0,  // 6: rag.v1.CreateTenantResponse.tenant:type_name -> rag.v1.Tenant
@@ -995,15 +1070,17 @@ var file_rag_v1_tenant_proto_depIdxs = []int32{
 	7,  // 11: rag.v1.TenantService.ListTenants:input_type -> rag.v1.ListTenantsRequest
 	9,  // 12: rag.v1.TenantService.UpdateTenant:input_type -> rag.v1.UpdateTenantRequest
 	10, // 13: rag.v1.TenantService.DeleteTenant:input_type -> rag.v1.DeleteTenantRequest
-	12, // 14: rag.v1.TenantService.RegenerateAPIKey:input_type -> rag.v1.RegenerateAPIKeyRequest
-	5,  // 15: rag.v1.TenantService.CreateTenant:output_type -> rag.v1.CreateTenantResponse
-	0,  // 16: rag.v1.TenantService.GetTenant:output_type -> rag.v1.Tenant
-	8,  // 17: rag.v1.TenantService.ListTenants:output_type -> rag.v1.ListTenantsResponse
-	0,  // 18: rag.v1.TenantService.UpdateTenant:output_type -> rag.v1.Tenant
-	11, // 19: rag.v1.TenantService.DeleteTenant:output_type -> rag.v1.DeleteTenantResponse
-	13, // 20: rag.v1.TenantService.RegenerateAPIKey:output_type -> rag.v1.RegenerateAPIKeyResponse
-	15, // [15:21] is the sub-list for method output_type
-	9,  // [9:15] is the sub-list for method input_type
+	13, // 14: rag.v1.TenantService.RegenerateAPIKey:input_type -> rag.v1.RegenerateAPIKeyRequest
+	12, // 15: rag.v1.TenantService.Signup:input_type -> rag.v1.SignupRequest
+	5,  // 16: rag.v1.TenantService.CreateTenant:output_type -> rag.v1.CreateTenantResponse
+	0,  // 17: rag.v1.TenantService.GetTenant:output_type -> rag.v1.Tenant
+	8,  // 18: rag.v1.TenantService.ListTenants:output_type -> rag.v1.ListTenantsResponse
+	0,  // 19: rag.v1.TenantService.UpdateTenant:output_type -> rag.v1.Tenant
+	11, // 20: rag.v1.TenantService.DeleteTenant:output_type -> rag.v1.DeleteTenantResponse
+	14, // 21: rag.v1.TenantService.RegenerateAPIKey:output_type -> rag.v1.RegenerateAPIKeyResponse
+	5,  // 22: rag.v1.TenantService.Signup:output_type -> rag.v1.CreateTenantResponse
+	16, // [16:23] is the sub-list for method output_type
+	9,  // [9:16] is the sub-list for method input_type
 	9,  // [9:9] is the sub-list for extension type_name
 	9,  // [9:9] is the sub-list for extension extendee
 	0,  // [0:9] is the sub-list for field type_name
@@ -1021,7 +1098,7 @@ func file_rag_v1_tenant_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_rag_v1_tenant_proto_rawDesc), len(file_rag_v1_tenant_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   14,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

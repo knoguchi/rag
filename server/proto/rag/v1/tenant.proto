@@ -65,6 +65,18 @@ service TenantService {
       post: "/v1/tenants/{id}/regenerate-key"
     };
   }
+
+  // Signup self-provisions a tenant without authentication (must be enabled
+  // via SIGNUP_ENABLED on the server; rate-limited). Intended for client
+  // installations (e.g. the browser extension) that generate an install
+  // ULID and register themselves. Signup tenants expire after a period of
+  // inactivity; their documents and vectors are deleted.
+  rpc Signup(SignupRequest) returns (CreateTenantResponse) {
+    option (google.api.http) = {
+      post: "/v1/signup"
+      body: "*"
+    };
+  }
 }
 
 message Tenant {
@@ -114,6 +126,11 @@ message TenantConfig {
   // situating context per chunk that is embedded with it.
   // Trade-off: much slower ingestion (one LLM call per chunk).
   optional bool contextual_retrieval_enabled = 9;
+
+  // Days of inactivity after which the tenant and all its data are deleted.
+  // 0 (default) means the tenant never expires. Set automatically for
+  // self-signup tenants.
+  int32 retention_days = 10;
 }
 
 message ChunkerConfig {
@@ -177,6 +194,14 @@ message DeleteTenantRequest {
 
 message DeleteTenantResponse {
   bool success = 1;
+}
+
+message SignupRequest {
+  // Client-generated install identifier (ULID, 26 chars). Its 128 bits
+  // become the tenant UUID, so a given installation maps to one tenant.
+  string install_id = 1;
+  // Optional display name for the tenant
+  string name = 2;
 }
 
 message RegenerateAPIKeyRequest {

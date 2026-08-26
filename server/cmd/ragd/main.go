@@ -131,6 +131,9 @@ func run() error {
 	engine := ragcore.New(embed, llmClient, vectorStore, engineOpts...)
 	defer engine.Close()
 
+	// Reap self-signup tenants whose retention policy has lapsed
+	go runRetentionReaper(ctx, tenantRepo, engine, cfg.RetentionSweepInterval)
+
 	// Initialize services
 	tenantSvc := service.NewTenantService(tenantRepo, engine, cfg)
 	documentSvc := service.NewDocumentService(documentRepo, tenantRepo, engine)
@@ -217,6 +220,43 @@ func run() error {
 
 	slog.Info("servers stopped")
 	return nil
+}
+
+// runRetentionReaper periodically deletes tenants (rows cascade to their
+// documents and chunks) and their vector collections once they have been
+// idle longer than their configured retention. Only tenants with a non-zero
+// retention_days config — i.e. self-signup installs — ever expire.
+func runRetentionReaper(ctx context.Context, tenantRepo repository.TenantRepository, engine *ragcore.Engine, interval time.Duration) {
+	if interval <= 0 {
+		interval = time.Hour
+	}
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+
+		expired, err := tenantRepo.ListExpired(ctx)
+		if err != nil {
+			slog.Warn("retention sweep failed", "error", err)
+			continue
+		}
+		for _, tenant := range expired {
+			slog.Info("reaping expired tenant",
+				"tenant_id", tenant.ID, "name", tenant.Name,
+				"retention_days", tenant.Config.RetentionDays)
+			if err := engine.DeleteNamespace(ctx, tenant.ID.String()); err != nil {
+				slog.Warn("failed to delete expired tenant's vectors", "error", err, "tenant_id", tenant.ID)
+			}
+			if err := tenantRepo.Delete(ctx, tenant.ID); err != nil {
+				slog.Warn("failed to delete expired tenant", "error", err, "tenant_id", tenant.ID)
+			}
+		}
+	}
 }
 
 // Ensure interfaces are satisfied at compile time

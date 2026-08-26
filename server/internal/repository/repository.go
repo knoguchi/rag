@@ -16,13 +16,14 @@ var ErrNotFound = errors.New("not found")
 // Tenant represents a tenant in the system. API keys are stored only as a
 // SHA-256 hash; KeyPrefix holds the first characters for display.
 type Tenant struct {
-	ID        uuid.UUID
-	Name      string
-	KeyPrefix string
-	Config    TenantConfig
-	Usage     TenantUsage
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID         uuid.UUID
+	Name       string
+	KeyPrefix  string
+	Config     TenantConfig
+	Usage      TenantUsage
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	LastUsedAt time.Time
 }
 
 // TenantConfig holds tenant-specific configuration
@@ -36,6 +37,7 @@ type TenantConfig struct {
 	RerankerEnabled            bool          `json:"reranker_enabled"`             // Enable LLM-based reranking (slower but more accurate)
 	HybridEnabled              bool          `json:"hybrid_enabled"`               // Dense+sparse hybrid retrieval (collection must be hybrid-capable)
 	ContextualRetrievalEnabled bool          `json:"contextual_retrieval_enabled"` // LLM-generated chunk context at ingestion
+	RetentionDays              int           `json:"retention_days,omitempty"`     // Idle days before the tenant is reaped (0 = never)
 }
 
 // ChunkerConfig is the chunking configuration, defined in the ragcore chunk package.
@@ -133,6 +135,9 @@ type TenantRepository interface {
 	// UpdateAPIKey replaces the tenant's API key (stored hashed).
 	UpdateAPIKey(ctx context.Context, id uuid.UUID, newAPIKey string) error
 	UpdateUsage(ctx context.Context, id uuid.UUID, usage TenantUsage) error
+	// ListExpired returns tenants whose retention policy has lapsed: a
+	// non-zero retention_days config and no activity for that many days.
+	ListExpired(ctx context.Context) ([]*Tenant, error)
 }
 
 // DocumentRepository defines operations for document persistence. All

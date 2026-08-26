@@ -53,6 +53,13 @@ type Config struct {
 	DefaultRerankerEnabled     bool `env:"DEFAULT_RERANKER_ENABLED" envDefault:"false"`
 	DefaultContextualRetrieval bool `env:"DEFAULT_CONTEXTUAL_RETRIEVAL" envDefault:"false"`
 
+	// Self-serve signup (e.g. the browser extension registering itself).
+	// Disabled by default; when enabled, signup tenants expire after
+	// SIGNUP_RETENTION_DAYS of inactivity and are reaped with their data.
+	SignupEnabled          bool          `env:"SIGNUP_ENABLED" envDefault:"false"`
+	SignupRetentionDays    int           `env:"SIGNUP_RETENTION_DAYS" envDefault:"30"`
+	RetentionSweepInterval time.Duration `env:"RETENTION_SWEEP_INTERVAL" envDefault:"1h"`
+
 	// Auth
 	AdminAPIKey        string   `env:"ADMIN_API_KEY"`
 	CORSAllowedOrigins []string `env:"CORS_ALLOWED_ORIGINS" envSeparator:"," envDefault:"*"`

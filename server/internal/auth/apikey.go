@@ -52,6 +52,8 @@ func NewAPIKeyInterceptor(tenantRepo repository.TenantRepository, adminAPIKey st
 			// Health check endpoints
 			"/grpc.health.v1.Health/Check": true,
 			"/grpc.health.v1.Health/Watch": true,
+			// Self-serve signup (gated by SIGNUP_ENABLED in the service)
+			"/rag.v1.TenantService/Signup": true,
 		},
 		adminMethods: map[string]bool{
 			// Tenant management requires admin auth

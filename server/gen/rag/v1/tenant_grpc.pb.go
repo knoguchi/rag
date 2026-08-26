@@ -25,6 +25,7 @@ const (
 	TenantService_UpdateTenant_FullMethodName     = "/rag.v1.TenantService/UpdateTenant"
 	TenantService_DeleteTenant_FullMethodName     = "/rag.v1.TenantService/DeleteTenant"
 	TenantService_RegenerateAPIKey_FullMethodName = "/rag.v1.TenantService/RegenerateAPIKey"
+	TenantService_Signup_FullMethodName           = "/rag.v1.TenantService/Signup"
 )
 
 // TenantServiceClient is the client API for TenantService service.
@@ -45,6 +46,12 @@ type TenantServiceClient interface {
 	DeleteTenant(ctx context.Context, in *DeleteTenantRequest, opts ...grpc.CallOption) (*DeleteTenantResponse, error)
 	// RegenerateAPIKey generates a new API key for a tenant
 	RegenerateAPIKey(ctx context.Context, in *RegenerateAPIKeyRequest, opts ...grpc.CallOption) (*RegenerateAPIKeyResponse, error)
+	// Signup self-provisions a tenant without authentication (must be enabled
+	// via SIGNUP_ENABLED on the server; rate-limited). Intended for client
+	// installations (e.g. the browser extension) that generate an install
+	// ULID and register themselves. Signup tenants expire after a period of
+	// inactivity; their documents and vectors are deleted.
+	Signup(ctx context.Context, in *SignupRequest, opts ...grpc.CallOption) (*CreateTenantResponse, error)
 }
 
 type tenantServiceClient struct {
@@ -115,6 +122,16 @@ func (c *tenantServiceClient) RegenerateAPIKey(ctx context.Context, in *Regenera
 	return out, nil
 }
 
+func (c *tenantServiceClient) Signup(ctx context.Context, in *SignupRequest, opts ...grpc.CallOption) (*CreateTenantResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateTenantResponse)
+	err := c.cc.Invoke(ctx, TenantService_Signup_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TenantServiceServer is the server API for TenantService service.
 // All implementations must embed UnimplementedTenantServiceServer
 // for forward compatibility.
@@ -133,6 +150,12 @@ type TenantServiceServer interface {
 	DeleteTenant(context.Context, *DeleteTenantRequest) (*DeleteTenantResponse, error)
 	// RegenerateAPIKey generates a new API key for a tenant
 	RegenerateAPIKey(context.Context, *RegenerateAPIKeyRequest) (*RegenerateAPIKeyResponse, error)
+	// Signup self-provisions a tenant without authentication (must be enabled
+	// via SIGNUP_ENABLED on the server; rate-limited). Intended for client
+	// installations (e.g. the browser extension) that generate an install
+	// ULID and register themselves. Signup tenants expire after a period of
+	// inactivity; their documents and vectors are deleted.
+	Signup(context.Context, *SignupRequest) (*CreateTenantResponse, error)
 	mustEmbedUnimplementedTenantServiceServer()
 }
 
@@ -160,6 +183,9 @@ func (UnimplementedTenantServiceServer) DeleteTenant(context.Context, *DeleteTen
 }
 func (UnimplementedTenantServiceServer) RegenerateAPIKey(context.Context, *RegenerateAPIKeyRequest) (*RegenerateAPIKeyResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RegenerateAPIKey not implemented")
+}
+func (UnimplementedTenantServiceServer) Signup(context.Context, *SignupRequest) (*CreateTenantResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Signup not implemented")
 }
 func (UnimplementedTenantServiceServer) mustEmbedUnimplementedTenantServiceServer() {}
 func (UnimplementedTenantServiceServer) testEmbeddedByValue()                       {}
@@ -290,6 +316,24 @@ func _TenantService_RegenerateAPIKey_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TenantService_Signup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SignupRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TenantServiceServer).Signup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TenantService_Signup_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TenantServiceServer).Signup(ctx, req.(*SignupRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // TenantService_ServiceDesc is the grpc.ServiceDesc for TenantService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -320,6 +364,10 @@ var TenantService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RegenerateAPIKey",
 			Handler:    _TenantService_RegenerateAPIKey_Handler,
+		},
+		{
+			MethodName: "Signup",
+			Handler:    _TenantService_Signup_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

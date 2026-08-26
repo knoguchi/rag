@@ -81,6 +81,7 @@ type nullVectorStore struct {
 
 func (nullVectorStore) Upsert(context.Context, string, []vectorstore.Chunk) error { return nil }
 func (nullVectorStore) Delete(context.Context, string, string) error              { return nil }
+func (nullVectorStore) CreateCollection(context.Context, string, int) error       { return nil }
 
 func TestIngest_ReplacesStaleDocumentForSameSource(t *testing.T) {
 	tenantID := uuid.New()
