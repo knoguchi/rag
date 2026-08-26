@@ -97,9 +97,11 @@ func run() error {
 	// Initialize auth interceptor
 	authInterceptor := auth.NewAPIKeyInterceptor(tenantRepo, cfg.AdminAPIKey)
 
-	// Assemble the RAG engine with BM25 sparse vectors for hybrid search
+	// Assemble the RAG engine: BM25 sparse vectors for hybrid search and
+	// conversation-aware query rewriting for multi-turn retrieval
 	engine := ragcore.New(embed, llmClient, vectorStore,
 		ragcore.WithSparseVectorizer(sparse.New()),
+		ragcore.WithRewriter(ragcore.NewRewriter(llmClient, ragcore.DefaultRewriteTimeout)),
 	)
 	defer engine.Close()
 

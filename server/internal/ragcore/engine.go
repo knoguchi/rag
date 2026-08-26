@@ -29,6 +29,7 @@ type Engine struct {
 	store    vectorstore.VectorStore
 	reranker reranker.Reranker // optional
 	sparse   SparseVectorizer  // optional; required for hybrid search
+	rewriter *Rewriter         // optional; conversation-aware query rewriting
 	memory   *memory.Store
 }
 
@@ -43,6 +44,11 @@ func WithReranker(r reranker.Reranker) Option {
 // WithSparseVectorizer enables hybrid search support.
 func WithSparseVectorizer(sv SparseVectorizer) Option {
 	return func(e *Engine) { e.sparse = sv }
+}
+
+// WithRewriter enables conversation-aware query rewriting before retrieval.
+func WithRewriter(r *Rewriter) Option {
+	return func(e *Engine) { e.rewriter = r }
 }
 
 // WithMemory sets the conversation memory store.

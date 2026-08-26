@@ -51,16 +51,30 @@ func (e *Engine) retrieve(ctx context.Context, namespace, query string, opts Opt
 	return results, nil
 }
 
-// history returns recent conversation history for the session and records the
-// new user message. Returns nil when memory is disabled for this call.
-func (e *Engine) history(namespace string, opts Options, query string) []memory.Message {
+// fetchHistory returns recent conversation history for the session, or nil
+// when memory is disabled for this call.
+func (e *Engine) fetchHistory(namespace string, opts Options) []memory.Message {
 	if opts.SessionID == "" {
 		return nil
 	}
-	key := sessionKey(namespace, opts.SessionID)
-	h := e.memory.GetRecentHistory(key, 10) // Last 10 messages (5 turns)
-	e.memory.AddUserMessage(key, query)
-	return h
+	return e.memory.GetRecentHistory(sessionKey(namespace, opts.SessionID), 10) // Last 10 messages (5 turns)
+}
+
+func (e *Engine) rememberQuestion(namespace string, opts Options, query string) {
+	if opts.SessionID == "" {
+		return
+	}
+	e.memory.AddUserMessage(sessionKey(namespace, opts.SessionID), query)
+}
+
+// searchQuery returns the query to use for retrieval: the conversation-aware
+// rewrite when a rewriter is configured and history exists, else the raw
+// query. The original query is always what goes into the final prompt.
+func (e *Engine) searchQuery(ctx context.Context, opts Options, history []memory.Message, query string) string {
+	if e.rewriter == nil || len(history) == 0 {
+		return query
+	}
+	return e.rewriter.Rewrite(ctx, opts.Model, history, query)
 }
 
 func (e *Engine) rememberAnswer(namespace string, opts Options, answer string) {
@@ -87,8 +101,10 @@ func toRetrievedChunk(r vectorstore.SearchResult) RetrievedChunk {
 func (e *Engine) Query(ctx context.Context, namespace, query string, opts Options) (*QueryResult, error) {
 	startTime := time.Now()
 
+	history := e.fetchHistory(namespace, opts)
+
 	retrievalStart := time.Now()
-	results, err := e.retrieve(ctx, namespace, query, opts)
+	results, err := e.retrieve(ctx, namespace, e.searchQuery(ctx, opts, history, query), opts)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +115,7 @@ func (e *Engine) Query(ctx context.Context, namespace, query string, opts Option
 		sources[i] = toRetrievedChunk(r)
 	}
 
-	history := e.history(namespace, opts, query)
+	e.rememberQuestion(namespace, opts, query)
 
 	generationStart := time.Now()
 	prompt := buildRAGPrompt(opts.SystemPrompt, sources, query, history)
@@ -135,8 +151,10 @@ func (e *Engine) Query(ctx context.Context, namespace, query string, opts Option
 func (e *Engine) QueryStream(ctx context.Context, namespace, query string, opts Options, emit func(StreamEvent) error) error {
 	startTime := time.Now()
 
+	history := e.fetchHistory(namespace, opts)
+
 	retrievalStart := time.Now()
-	results, err := e.retrieve(ctx, namespace, query, opts)
+	results, err := e.retrieve(ctx, namespace, e.searchQuery(ctx, opts, history, query), opts)
 	if err != nil {
 		return err
 	}
@@ -151,7 +169,7 @@ func (e *Engine) QueryStream(ctx context.Context, namespace, query string, opts 
 		}
 	}
 
-	history := e.history(namespace, opts, query)
+	e.rememberQuestion(namespace, opts, query)
 
 	generationStart := time.Now()
 	prompt := buildRAGPrompt(opts.SystemPrompt, sources, query, history)
