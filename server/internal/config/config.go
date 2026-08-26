@@ -60,6 +60,10 @@ type Config struct {
 	SignupRetentionDays    int           `env:"SIGNUP_RETENTION_DAYS" envDefault:"30"`
 	RetentionSweepInterval time.Duration `env:"RETENTION_SWEEP_INTERVAL" envDefault:"1h"`
 
+	// Allow IngestURL to fetch private/loopback addresses (SSRF guard off).
+	// Enable only for local development.
+	URLFetchAllowPrivate bool `env:"URL_FETCH_ALLOW_PRIVATE" envDefault:"false"`
+
 	// Auth
 	AdminAPIKey        string   `env:"ADMIN_API_KEY"`
 	CORSAllowedOrigins []string `env:"CORS_ALLOWED_ORIGINS" envSeparator:"," envDefault:"*"`

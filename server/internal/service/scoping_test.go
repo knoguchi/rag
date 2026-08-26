@@ -61,7 +61,7 @@ func TestGetDocument_TenantScoping(t *testing.T) {
 	owner := ids.New()
 	other := ids.New()
 	docID := ids.New()
-	svc := NewDocumentService(&fakeDocRepo{ownerID: owner, docID: docID}, nil, nil)
+	svc := NewDocumentService(&fakeDocRepo{ownerID: owner, docID: docID}, nil, nil, false)
 
 	// Owner can read its document
 	if _, err := svc.GetDocument(ctxAsTenant(owner), &ragv1.GetDocumentRequest{Id: docID.String()}); err != nil {
@@ -85,7 +85,7 @@ func TestGetDocumentChunks_TenantScoping(t *testing.T) {
 	owner := ids.New()
 	other := ids.New()
 	docID := ids.New()
-	svc := NewDocumentService(&fakeDocRepo{ownerID: owner, docID: docID}, nil, nil)
+	svc := NewDocumentService(&fakeDocRepo{ownerID: owner, docID: docID}, nil, nil, false)
 
 	resp, err := svc.GetDocumentChunks(ctxAsTenant(owner), &ragv1.GetDocumentChunksRequest{DocumentId: docID.String()})
 	if err != nil || len(resp.Chunks) == 0 {

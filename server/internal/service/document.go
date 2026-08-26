@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"sync"
@@ -33,6 +35,11 @@ type DocumentService struct {
 	engine     *ragcore.Engine
 	httpClient *http.Client
 	wg         sync.WaitGroup
+
+	// allowPrivateURLs permits IngestURL to fetch loopback/private-network
+	// addresses. Keep false anywhere the server can reach internal services
+	// (SSRF); enable for local development.
+	allowPrivateURLs bool
 }
 
 // NewDocumentService creates a new DocumentService
@@ -40,13 +47,45 @@ func NewDocumentService(
 	docRepo repository.DocumentRepository,
 	tenantRepo repository.TenantRepository,
 	engine *ragcore.Engine,
+	allowPrivateURLs bool,
 ) *DocumentService {
 	return &DocumentService{
-		docRepo:    docRepo,
-		tenantRepo: tenantRepo,
-		engine:     engine,
-		httpClient: &http.Client{Timeout: 30 * time.Second},
+		docRepo:          docRepo,
+		tenantRepo:       tenantRepo,
+		engine:           engine,
+		httpClient:       &http.Client{Timeout: 30 * time.Second},
+		allowPrivateURLs: allowPrivateURLs,
 	}
+}
+
+// validateFetchURL guards the server-side fetcher against SSRF: only
+// http(s), and unless allowPrivate, no URLs resolving to loopback, private,
+// link-local, or unspecified addresses (cloud metadata endpoints included).
+// Note: a basic pre-fetch check; DNS-rebinding-grade attackers need a
+// resolving transport, which is out of scope here.
+func validateFetchURL(raw string, allowPrivate bool) error {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return fmt.Errorf("invalid URL: %w", err)
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("scheme %q not allowed", u.Scheme)
+	}
+	if allowPrivate {
+		return nil
+	}
+	host := u.Hostname()
+	ips, err := net.LookupIP(host)
+	if err != nil {
+		return fmt.Errorf("cannot resolve host: %w", err)
+	}
+	for _, ip := range ips {
+		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() ||
+			ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
+			return fmt.Errorf("host resolves to a non-public address")
+		}
+	}
+	return nil
 }
 
 // ingestTimeout bounds async document processing. Contextual ingestion runs
@@ -191,6 +230,9 @@ func (s *DocumentService) IngestDocument(ctx context.Context, req *ragv1.IngestD
 func (s *DocumentService) IngestURL(ctx context.Context, req *ragv1.IngestURLRequest) (*ragv1.IngestDocumentResponse, error) {
 	if req.Url == "" {
 		return nil, status.Error(codes.InvalidArgument, "url is required")
+	}
+	if err := validateFetchURL(req.Url, s.allowPrivateURLs); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "url rejected: %v", err)
 	}
 
 	tenant, err := authedTenant(ctx)
@@ -549,11 +591,35 @@ func (s *DocumentService) processURL(ctx context.Context, doc *repository.Docume
 
 	doc.ContentHash = hashContent(content)
 
-	// Check for duplicate by hash
+	// Unchanged content (e.g. a revisited page): nothing to do — drop the
+	// pending row instead of leaving FAILED debris on every revisit
 	existingDoc, err := s.docRepo.GetByHash(ctx, doc.TenantID, doc.ContentHash)
 	if err == nil && existingDoc != nil && existingDoc.ID != doc.ID {
-		s.markDocumentFailed(ctx, doc, fmt.Sprintf("duplicate content exists in document %s", existingDoc.ID.String()))
+		slog.Info("URL content unchanged, dropping pending re-ingest",
+			"url", rawURL, "existing_doc", existingDoc.ID)
+		_ = s.docRepo.Delete(ctx, doc.TenantID, doc.ID)
 		return
+	}
+
+	// Changed content: replace stale versions of this source
+	stale, err := s.docRepo.ListBySource(ctx, doc.TenantID, doc.Source)
+	if err != nil {
+		slog.Warn("failed to check for stale documents", "error", err, "source", doc.Source)
+	}
+	for _, old := range stale {
+		if old.ID == doc.ID {
+			continue
+		}
+		slog.Info("replacing stale document for source", "doc_id", old.ID, "source", doc.Source)
+		if err := s.engine.DeleteDocument(ctx, doc.TenantID.UUIDString(), old.ID.UUIDString()); err != nil {
+			slog.Warn("failed to delete stale vectors", "error", err, "doc_id", old.ID)
+		}
+		if err := s.docRepo.DeleteChunks(ctx, doc.TenantID, old.ID); err != nil {
+			slog.Warn("failed to delete stale chunks", "error", err, "doc_id", old.ID)
+		}
+		if err := s.docRepo.Delete(ctx, doc.TenantID, old.ID); err != nil {
+			slog.Warn("failed to delete stale document", "error", err, "doc_id", old.ID)
+		}
 	}
 
 	// Process the fetched content

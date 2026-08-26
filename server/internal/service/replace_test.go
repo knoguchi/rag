@@ -88,7 +88,7 @@ func TestIngest_ReplacesStaleDocumentForSameSource(t *testing.T) {
 	repo := &replaceFakeRepo{docs: map[ids.ID]*repository.Document{}}
 	engine := ragcore.New(nullEmbedder{}, nil, nullVectorStore{})
 	defer engine.Close()
-	svc := NewDocumentService(repo, &fakeTenantRepo{}, engine)
+	svc := NewDocumentService(repo, &fakeTenantRepo{}, engine, false)
 	ctx := ctxAsTenant(tenantID)
 
 	// First version of the page
@@ -132,5 +132,28 @@ func TestIngest_ReplacesStaleDocumentForSameSource(t *testing.T) {
 	}
 	if resp3.DocumentId != ids.Format(docs[0].ID) {
 		t.Errorf("expected dedup to return existing doc %s, got %s", ids.Format(docs[0].ID), resp3.DocumentId)
+	}
+}
+
+func TestValidateFetchURL(t *testing.T) {
+	cases := []struct {
+		url          string
+		allowPrivate bool
+		wantErr      bool
+	}{
+		{"https://example.com/page", false, false},
+		{"http://localhost:8000/x", false, true},
+		{"http://127.0.0.1/x", false, true},
+		{"http://169.254.169.254/latest/meta-data", false, true},
+		{"http://192.168.4.10/x", false, true},
+		{"ftp://example.com/x", false, true},
+		{"ftp://example.com/x", true, true}, // scheme check applies even when private allowed
+		{"http://localhost:8000/x", true, false},
+	}
+	for _, tc := range cases {
+		err := validateFetchURL(tc.url, tc.allowPrivate)
+		if (err != nil) != tc.wantErr {
+			t.Errorf("validateFetchURL(%q, allowPrivate=%v) err=%v, wantErr=%v", tc.url, tc.allowPrivate, err, tc.wantErr)
+		}
 	}
 }
