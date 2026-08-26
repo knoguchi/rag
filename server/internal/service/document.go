@@ -416,6 +416,7 @@ func (s *DocumentService) processDocument(ctx context.Context, doc *repository.D
 			"title":  doc.Title,
 		},
 		Chunker: tenant.Config.Chunker,
+		Hybrid:  tenant.Config.HybridEnabled,
 	}, func(chunks []ragcore.IngestedChunk) error {
 		docChunks := ingestedToDocumentChunks(chunks, doc.ID)
 		if err := s.docRepo.CreateChunks(ctx, docChunks); err != nil {

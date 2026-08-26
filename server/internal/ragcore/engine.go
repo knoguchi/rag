@@ -74,8 +74,13 @@ func (e *Engine) Close() {
 }
 
 // CreateNamespace provisions vector storage for a namespace. The embedding
-// dimension is taken from the configured embedder.
+// dimension is taken from the configured embedder. When a sparse vectorizer
+// is configured, the namespace is created with hybrid (dense + sparse)
+// support.
 func (e *Engine) CreateNamespace(ctx context.Context, namespace string) error {
+	if e.sparse != nil {
+		return e.store.CreateHybridCollection(ctx, namespace, e.embedder.Dimension())
+	}
 	return e.store.CreateCollection(ctx, namespace, e.embedder.Dimension())
 }
 

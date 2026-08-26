@@ -98,7 +98,17 @@ message TenantConfig {
 
   // Enable LLM-based reranking for improved relevance.
   // Trade-off: +1-3s latency, ~2x LLM cost, but better accuracy.
-  bool reranker_enabled = 7;
+  optional bool reranker_enabled = 7;
+
+  // Enable hybrid (dense + BM25 sparse) retrieval with RRF fusion.
+  // Requires the tenant's vector collection to be hybrid-capable; legacy
+  // dense-only collections must be reindexed first.
+  optional bool hybrid_enabled = 8;
+
+  // Enable contextual retrieval: at ingestion, an LLM generates a short
+  // situating context per chunk that is embedded with it.
+  // Trade-off: much slower ingestion (one LLM call per chunk).
+  optional bool contextual_retrieval_enabled = 9;
 }
 
 message ChunkerConfig {

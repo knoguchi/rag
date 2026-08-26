@@ -20,6 +20,10 @@ type IngestInput struct {
 	// every chunk and to the vector payload.
 	ChunkDefaults map[string]string
 	Chunker       chunk.Config
+	// Hybrid stores sparse vectors alongside dense ones. Only valid for
+	// namespaces created with hybrid support; must be false for legacy
+	// dense-only namespaces.
+	Hybrid bool
 }
 
 // IngestedChunk is a chunk produced by ingestion, returned so the caller can
@@ -89,7 +93,7 @@ func (e *Engine) Ingest(ctx context.Context, in IngestInput, persist func([]Inge
 		metadata["document_id"] = in.DocumentID
 
 		var sparse *vectorstore.SparseVector
-		if e.sparse != nil {
+		if in.Hybrid && e.sparse != nil {
 			sparse = e.sparse.Vectorize(c.Content)
 		}
 

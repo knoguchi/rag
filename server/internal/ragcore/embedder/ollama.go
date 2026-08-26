@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"sync"
+	"time"
 )
 
 const (
@@ -76,7 +77,8 @@ func NewOllamaEmbedder(cfg OllamaConfig) *OllamaEmbedder {
 
 	dimension := cfg.Dimension
 	if dimension <= 0 {
-		dimension = DefaultOllamaDimension
+		// Resolve from the known-models table (falls back to 768)
+		dimension = GetModelConfig(model).Dimension
 	}
 
 	batchConcurrency := cfg.BatchConcurrency
@@ -86,7 +88,7 @@ func NewOllamaEmbedder(cfg OllamaConfig) *OllamaEmbedder {
 
 	client := cfg.HTTPClient
 	if client == nil {
-		client = http.DefaultClient
+		client = &http.Client{Timeout: 60 * time.Second}
 	}
 
 	return &OllamaEmbedder{

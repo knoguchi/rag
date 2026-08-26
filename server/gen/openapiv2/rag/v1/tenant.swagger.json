@@ -7,7 +7,8 @@
   },
   "tags": [
     {
-      "name": "TenantService"
+      "name": "TenantService",
+      "description": "TenantService manages tenant configuration and API keys"
     }
   ],
   "schemes": [
@@ -389,6 +390,14 @@
         "rerankerEnabled": {
           "type": "boolean",
           "description": "Enable LLM-based reranking for improved relevance.\nTrade-off: +1-3s latency, ~2x LLM cost, but better accuracy."
+        },
+        "hybridEnabled": {
+          "type": "boolean",
+          "description": "Enable hybrid (dense + BM25 sparse) retrieval with RRF fusion.\nRequires the tenant's vector collection to be hybrid-capable; legacy\ndense-only collections must be reindexed first."
+        },
+        "contextualRetrievalEnabled": {
+          "type": "boolean",
+          "description": "Enable contextual retrieval: at ingestion, an LLM generates a short\nsituating context per chunk that is embedded with it.\nTrade-off: much slower ingestion (one LLM call per chunk)."
         }
       }
     },

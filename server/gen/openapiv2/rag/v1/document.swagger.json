@@ -7,7 +7,8 @@
   },
   "tags": [
     {
-      "name": "DocumentService"
+      "name": "DocumentService",
+      "description": "DocumentService manages document ingestion and retrieval"
     }
   ],
   "schemes": [
@@ -375,7 +376,7 @@
         "DOCUMENT_STATUS_FAILED"
       ],
       "default": "DOCUMENT_STATUS_UNSPECIFIED",
-      "title": "DocumentStatus represents the processing status of a document"
+      "description": "DocumentStatus represents the processing status of a document"
     },
     "v1GetDocumentChunksResponse": {
       "type": "object",

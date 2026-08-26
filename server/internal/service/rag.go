@@ -61,6 +61,7 @@ func buildOptions(tenant *repository.Tenant, opts *ragv1.QueryOptions, sessionID
 		MaxTokens:     2048, // Default max tokens
 		Model:         tenant.Config.LLMModel,
 		RerankEnabled: tenant.Config.RerankerEnabled,
+		HybridEnabled: tenant.Config.HybridEnabled,
 		SessionID:     sessionID,
 	}
 

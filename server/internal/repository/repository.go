@@ -26,13 +26,15 @@ type Tenant struct {
 
 // TenantConfig holds tenant-specific configuration
 type TenantConfig struct {
-	EmbeddingModel   string        `json:"embedding_model"`
-	LLMModel         string        `json:"llm_model"`
-	Chunker          ChunkerConfig `json:"chunker"`
-	TopK             int           `json:"top_k"`
-	MinScore         float32       `json:"min_score"`
-	SystemPrompt     string        `json:"system_prompt"`
-	RerankerEnabled  bool          `json:"reranker_enabled"`  // Enable LLM-based reranking (slower but more accurate)
+	EmbeddingModel             string        `json:"embedding_model"`
+	LLMModel                   string        `json:"llm_model"`
+	Chunker                    ChunkerConfig `json:"chunker"`
+	TopK                       int           `json:"top_k"`
+	MinScore                   float32       `json:"min_score"`
+	SystemPrompt               string        `json:"system_prompt"`
+	RerankerEnabled            bool          `json:"reranker_enabled"`             // Enable LLM-based reranking (slower but more accurate)
+	HybridEnabled              bool          `json:"hybrid_enabled"`               // Dense+sparse hybrid retrieval (collection must be hybrid-capable)
+	ContextualRetrievalEnabled bool          `json:"contextual_retrieval_enabled"` // LLM-generated chunk context at ingestion
 }
 
 // ChunkerConfig is the chunking configuration, defined in the ragcore chunk package.
@@ -62,12 +64,12 @@ type Document struct {
 
 // DocumentChunk represents a chunk of a document
 type DocumentChunk struct {
-	ID          uuid.UUID
-	DocumentID  uuid.UUID
-	ChunkIndex  int
-	Content     string
-	Metadata    map[string]string
-	CreatedAt   time.Time
+	ID         uuid.UUID
+	DocumentID uuid.UUID
+	ChunkIndex int
+	Content    string
+	Metadata   map[string]string
+	CreatedAt  time.Time
 }
 
 // CrawlJob represents a web crawling job

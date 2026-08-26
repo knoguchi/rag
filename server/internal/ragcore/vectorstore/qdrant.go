@@ -87,7 +87,11 @@ func (s *QdrantStore) CreateHybridCollection(ctx context.Context, namespace stri
 			},
 		}),
 		SparseVectorsConfig: qdrant.NewSparseVectorsConfig(map[string]*qdrant.SparseVectorParams{
-			sparseVectorName: {}, // Use default sparse vector config
+			sparseVectorName: {
+				// Qdrant applies IDF server-side at query time, so
+				// client-side sparse values only need term frequencies.
+				Modifier: qdrant.Modifier_Idf.Enum(),
+			},
 		}),
 	})
 	if err != nil {
@@ -285,11 +289,15 @@ func (s *QdrantStore) HybridSearch(ctx context.Context, namespace string, denseV
 	// Build prefetch queries for both dense and sparse
 	prefetchLimit := uint64(topK * 2) // Get more candidates for fusion
 
+	// minScore applies to the dense (cosine) prefetch only. Fused RRF scores
+	// are rank-scale (~1/60) and must never be compared against cosine
+	// thresholds.
 	prefetch := []*qdrant.PrefetchQuery{
 		{
-			Query: qdrant.NewQueryDense(denseVector),
-			Using: qdrant.PtrOf(denseVectorName),
-			Limit: qdrant.PtrOf(prefetchLimit),
+			Query:          qdrant.NewQueryDense(denseVector),
+			Using:          qdrant.PtrOf(denseVectorName),
+			Limit:          qdrant.PtrOf(prefetchLimit),
+			ScoreThreshold: qdrant.PtrOf(minScore),
 		},
 	}
 
@@ -336,10 +344,7 @@ func (s *QdrantStore) HybridSearch(ctx context.Context, namespace string, denseV
 			}
 		}
 
-		// Skip results below minScore threshold
-		if result.Score >= minScore {
-			results = append(results, result)
-		}
+		results = append(results, result)
 	}
 
 	return results, nil

@@ -14,6 +14,7 @@ import (
 	"github.com/knoguchi/rag/internal/ragcore"
 	"github.com/knoguchi/rag/internal/ragcore/embedder"
 	"github.com/knoguchi/rag/internal/ragcore/llm"
+	"github.com/knoguchi/rag/internal/ragcore/sparse"
 	"github.com/knoguchi/rag/internal/ragcore/vectorstore"
 	"github.com/knoguchi/rag/internal/repository"
 	"github.com/knoguchi/rag/internal/repository/postgres"
@@ -96,8 +97,10 @@ func run() error {
 	// Initialize auth interceptor
 	authInterceptor := auth.NewAPIKeyInterceptor(tenantRepo, cfg.AdminAPIKey)
 
-	// Assemble the RAG engine
-	engine := ragcore.New(embed, llmClient, vectorStore)
+	// Assemble the RAG engine with BM25 sparse vectors for hybrid search
+	engine := ragcore.New(embed, llmClient, vectorStore,
+		ragcore.WithSparseVectorizer(sparse.New()),
+	)
 	defer engine.Close()
 
 	// Initialize services

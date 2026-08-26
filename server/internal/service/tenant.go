@@ -13,9 +13,9 @@ import (
 	"github.com/google/uuid"
 	ragv1 "github.com/knoguchi/rag/gen/rag/v1"
 	"github.com/knoguchi/rag/internal/config"
+	"github.com/knoguchi/rag/internal/ragcore"
 	"github.com/knoguchi/rag/internal/ragcore/embedder"
 	"github.com/knoguchi/rag/internal/repository"
-	"github.com/knoguchi/rag/internal/ragcore"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -288,6 +288,9 @@ func (s *TenantService) buildTenantConfig(protoConfig *ragv1.TenantConfig) repos
 		TopK:         s.cfg.DefaultTopK,
 		MinScore:     s.cfg.DefaultMinScore,
 		SystemPrompt: defaultSystemPrompt,
+		// New tenants get hybrid-capable collections, so hybrid retrieval
+		// defaults on. Legacy tenants must reindex before enabling it.
+		HybridEnabled: true,
 	}
 
 	if protoConfig == nil {
@@ -306,6 +309,15 @@ func (s *TenantService) buildTenantConfig(protoConfig *ragv1.TenantConfig) repos
 	}
 	if protoConfig.SystemPrompt != "" {
 		config.SystemPrompt = protoConfig.SystemPrompt
+	}
+	if protoConfig.RerankerEnabled != nil {
+		config.RerankerEnabled = *protoConfig.RerankerEnabled
+	}
+	if protoConfig.HybridEnabled != nil {
+		config.HybridEnabled = *protoConfig.HybridEnabled
+	}
+	if protoConfig.ContextualRetrievalEnabled != nil {
+		config.ContextualRetrievalEnabled = *protoConfig.ContextualRetrievalEnabled
 	}
 
 	if protoConfig.Chunker != nil {
@@ -342,6 +354,15 @@ func (s *TenantService) mergeConfig(existing repository.TenantConfig, protoConfi
 	}
 	if protoConfig.SystemPrompt != "" {
 		existing.SystemPrompt = protoConfig.SystemPrompt
+	}
+	if protoConfig.RerankerEnabled != nil {
+		existing.RerankerEnabled = *protoConfig.RerankerEnabled
+	}
+	if protoConfig.HybridEnabled != nil {
+		existing.HybridEnabled = *protoConfig.HybridEnabled
+	}
+	if protoConfig.ContextualRetrievalEnabled != nil {
+		existing.ContextualRetrievalEnabled = *protoConfig.ContextualRetrievalEnabled
 	}
 
 	if protoConfig.Chunker != nil {
@@ -423,9 +444,12 @@ func (s *TenantService) tenantToProto(t *repository.Tenant) *ragv1.Tenant {
 				MaxSize:    int32(t.Config.Chunker.MaxSize),
 				Overlap:    int32(t.Config.Chunker.Overlap),
 			},
-			TopK:         int32(t.Config.TopK),
-			MinScore:     t.Config.MinScore,
-			SystemPrompt: t.Config.SystemPrompt,
+			TopK:                       int32(t.Config.TopK),
+			MinScore:                   t.Config.MinScore,
+			SystemPrompt:               t.Config.SystemPrompt,
+			RerankerEnabled:            &t.Config.RerankerEnabled,
+			HybridEnabled:              &t.Config.HybridEnabled,
+			ContextualRetrievalEnabled: &t.Config.ContextualRetrievalEnabled,
 		},
 		Usage: &ragv1.TenantUsage{
 			DocumentCount:   int32(t.Usage.DocumentCount),
