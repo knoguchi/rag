@@ -26,6 +26,14 @@ NC='\033[0m' # No Color
 TENANT_ID="00000000-0000-0000-0000-000000000001"
 RAG_URL="http://localhost:8080"
 SAMPLE_SITE_PORT="8000"
+DATABASE_URL="${DATABASE_URL:-postgres://rag:rag@localhost:5432/rag?sslmode=disable}"
+
+# Admin key gates tenant management; generate one for the demo if unset
+if [ -z "$ADMIN_API_KEY" ]; then
+    ADMIN_API_KEY="demo-admin-$(head -c16 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+    export ADMIN_API_KEY
+fi
+TENANT_API_KEY=""  # captured from tenant creation
 
 log() {
     echo -e "${BLUE}[DEMO]${NC} $1"
@@ -51,6 +59,8 @@ check_prereqs() {
     command -v docker-compose >/dev/null 2>&1 || error "Docker Compose is required but not installed"
     command -v go >/dev/null 2>&1 || error "Go is required but not installed"
     command -v node >/dev/null 2>&1 || error "Node.js is required but not installed"
+    command -v jq >/dev/null 2>&1 || error "jq is required but not installed"
+    command -v migrate >/dev/null 2>&1 || error "golang-migrate is required (brew install golang-migrate)"
 
     success "Prerequisites OK"
 }
@@ -111,48 +121,48 @@ build_services() {
 
     make generate 2>/dev/null || true
     go build -o bin/ragd ./cmd/ragd
-    go build -o bin/crawlerd ./cmd/crawlerd
 
     success "Services built"
 }
 
+run_migrations() {
+    log "Running database migrations..."
+    cd "$SERVER_DIR"
+    migrate -path internal/repository/postgres/migrations -database "$DATABASE_URL" up
+    success "Migrations applied"
+}
+
 start_services() {
-    log "Starting RAG and Crawler services..."
+    log "Starting RAG service..."
     cd "$SERVER_DIR"
 
     # Kill existing services if running
     pkill -f "bin/ragd" 2>/dev/null || true
-    pkill -f "bin/crawlerd" 2>/dev/null || true
     sleep 2
 
-    # Start RAG service in background
+    # Start RAG service in background (inherits ADMIN_API_KEY)
     ./bin/ragd > /tmp/ragd.log 2>&1 &
     RAG_PID=$!
-
-    # Start Crawler service in background
-    ./bin/crawlerd > /tmp/crawlerd.log 2>&1 &
-    CRAWLER_PID=$!
 
     # Wait for services to be ready
     log "Waiting for services to start..."
     sleep 3
 
-    until curl -s "$RAG_URL/v1/tenants" >/dev/null 2>&1; do
+    until curl -s "$RAG_URL/healthz" >/dev/null 2>&1; do
         log "Waiting for RAG service..."
         sleep 2
     done
     success "RAG service ready (PID: $RAG_PID)"
-    success "Crawler service ready (PID: $CRAWLER_PID)"
 }
 
 cleanup_existing_data() {
     log "Cleaning up existing demo data..."
 
     # Delete tenant if it exists (this removes all documents and vectors)
-    existing=$(curl -s "$RAG_URL/v1/tenants/$TENANT_ID" 2>&1)
-    if echo "$existing" | grep -q "api_key"; then
+    existing=$(curl -s -H "X-API-Key: $ADMIN_API_KEY" "$RAG_URL/v1/tenants/$TENANT_ID" 2>&1)
+    if echo "$existing" | jq -e '.id' >/dev/null 2>&1; then
         log "Deleting existing tenant and all its data..."
-        curl -s -X DELETE "$RAG_URL/v1/tenants/$TENANT_ID" >/dev/null 2>&1
+        curl -s -X DELETE -H "X-API-Key: $ADMIN_API_KEY" "$RAG_URL/v1/tenants/$TENANT_ID" >/dev/null 2>&1
         sleep 2
         success "Existing data cleaned up"
     else
@@ -163,29 +173,21 @@ cleanup_existing_data() {
 create_tenant() {
     log "Creating Demo Cloud tenant..."
 
-    # Create tenant (always fresh since we cleaned up first)
+    # Create tenant (always fresh since we cleaned up first). The API key
+    # is returned exactly once, in this response.
     result=$(curl -s -X POST "$RAG_URL/v1/tenants" \
         -H "Content-Type: application/json" \
+        -H "X-API-Key: $ADMIN_API_KEY" \
         -d "{
             \"name\": \"Demo Cloud\",
             \"id\": \"$TENANT_ID\"
         }")
 
-    if echo "$result" | grep -q "api_key"; then
+    TENANT_API_KEY=$(echo "$result" | jq -r '.api_key // empty')
+    if [ -n "$TENANT_API_KEY" ]; then
         success "Tenant created: $TENANT_ID"
     else
-        # If custom ID not supported, create without it
-        result=$(curl -s -X POST "$RAG_URL/v1/tenants" \
-            -H "Content-Type: application/json" \
-            -d '{"name": "Demo Cloud"}')
-
-        NEW_ID=$(echo "$result" | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
-        if [ -n "$NEW_ID" ]; then
-            warn "Created tenant with auto-generated ID: $NEW_ID"
-            TENANT_ID="$NEW_ID"
-        else
-            error "Failed to create tenant"
-        fi
+        error "Failed to create tenant: $result"
     fi
 }
 
@@ -201,6 +203,11 @@ build_client_sdk() {
 
     # Copy browser bundle to demo-site for easy serving
     cp dist/rag-sdk.browser.js "$SCRIPT_DIR/"
+
+    # Widget config with the tenant API key; loaded by every demo page
+    printf "window.DEMO_RAG_CONFIG = {\n  apiKey: '%s',\n  baseUrl: '%s'\n};\n" \
+        "$TENANT_API_KEY" "$RAG_URL" > "$SCRIPT_DIR/demo-config.js"
+    cp "$SCRIPT_DIR/demo-config.js" "$SCRIPT_DIR/docs/demo-config.js"
     success "Client SDK built"
 }
 
@@ -247,7 +254,7 @@ run_crawler() {
     cd "$PROJECT_DIR/crawler"
 
     node crawl.js \
-        --tenant-id "$TENANT_ID" \
+        --api-key "$TENANT_API_KEY" \
         --url "http://localhost:$SAMPLE_SITE_PORT" \
         --include "/docs/**" \
         --include "/pricing.html" \
@@ -261,15 +268,8 @@ run_crawler() {
 verify_ingestion() {
     log "Verifying ingestion..."
 
-    doc_count=$(curl -s "$RAG_URL/v1/documents?tenant_id=$TENANT_ID" | grep -o '"documents":\[' | wc -l)
-
-    # Get actual count
-    response=$(curl -s "$RAG_URL/v1/documents?tenant_id=$TENANT_ID")
-    if command -v jq >/dev/null 2>&1; then
-        doc_count=$(echo "$response" | jq '.documents | length')
-    else
-        doc_count=$(echo "$response" | grep -o '"id"' | wc -l)
-    fi
+    response=$(curl -s -H "X-API-Key: $TENANT_API_KEY" "$RAG_URL/v1/documents")
+    doc_count=$(echo "$response" | jq '.documents | length')
 
     success "Ingested $doc_count documents"
 }
@@ -290,10 +290,8 @@ run_sample_queries() {
 
         response=$(curl -s -X POST "$RAG_URL/v1/query" \
             -H "Content-Type: application/json" \
-            -d "{
-                \"tenant_id\": \"$TENANT_ID\",
-                \"query\": \"$query\"
-            }")
+            -H "X-API-Key: $TENANT_API_KEY" \
+            -d "{\"query\": \"$query\"}")
 
         if command -v jq >/dev/null 2>&1; then
             answer=$(echo "$response" | jq -r '.answer // .error // "No response"')
@@ -317,26 +315,28 @@ print_summary() {
     echo ""
     echo "Services running:"
     echo "  - RAG Service:     http://localhost:8080"
-    echo "  - Crawler Service: localhost:9091 (gRPC)"
     echo "  - Sample Site:     http://localhost:$SAMPLE_SITE_PORT/"
     echo ""
-    echo "Tenant ID: $TENANT_ID"
+    echo "Tenant ID:      $TENANT_ID"
+    echo "Tenant API key: $TENANT_API_KEY  (shown once; store it securely)"
+    echo "Admin API key:  $ADMIN_API_KEY"
     echo ""
     echo "Try these commands:"
     echo ""
     echo "  # Query the RAG service"
     echo "  curl -X POST $RAG_URL/v1/query \\"
     echo "    -H 'Content-Type: application/json' \\"
-    echo "    -d '{\"tenant_id\": \"$TENANT_ID\", \"query\": \"How do I create a database?\"}' | jq"
+    echo "    -H 'X-API-Key: $TENANT_API_KEY' \\"
+    echo "    -d '{\"query\": \"How do I create a database?\"}' | jq"
     echo ""
     echo "  # List documents"
-    echo "  curl '$RAG_URL/v1/documents?tenant_id=$TENANT_ID' | jq"
+    echo "  curl -H 'X-API-Key: $TENANT_API_KEY' '$RAG_URL/v1/documents' | jq"
     echo ""
     echo "  # View logs"
     echo "  tail -f /tmp/ragd.log"
     echo ""
     echo "To stop everything:"
-    echo "  pkill -f ragd; pkill -f crawlerd; pkill -f 'python.*http.server'"
+    echo "  pkill -f ragd; pkill -f 'python.*http.server'"
     echo "  docker-compose -f deployments/docker-compose.dev.yml down"
     echo ""
 }
@@ -352,6 +352,7 @@ main() {
     check_prereqs
     start_infrastructure
     build_services
+    run_migrations
     start_services
     cleanup_existing_data
     create_tenant

@@ -5,10 +5,11 @@
 export interface RAGClientConfig {
   /** Base URL of the RAG service (e.g., http://localhost:8080) */
   baseUrl: string;
-  /** Tenant ID for multi-tenant access */
-  tenantId: string;
-  /** Optional API key for authentication */
-  apiKey?: string;
+  /**
+   * Tenant API key. Identifies and authenticates the tenant — the server
+   * derives the tenant from this key, so no tenant ID is needed.
+   */
+  apiKey: string;
   /** Request timeout in milliseconds (default: 30000) */
   timeout?: number;
 }
@@ -22,6 +23,11 @@ export interface QueryOptions {
   systemPrompt?: string;
   /** Enable streaming response */
   stream?: boolean;
+  /**
+   * Session ID for conversation memory. When set, the server remembers
+   * previous exchanges and rewrites follow-up questions for retrieval.
+   */
+  sessionId?: string;
 }
 
 export interface RetrievedChunk {

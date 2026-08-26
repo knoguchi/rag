@@ -26,14 +26,14 @@ Playwright will automatically download Chromium on first run.
 ## Usage
 
 ```bash
-node crawl.js --tenant-id <id> --url <start-url> [options]
+node crawl.js --api-key <key> --url <start-url> [options]
 ```
 
 ### Required Options
 
 | Option | Description |
 |--------|-------------|
-| `--tenant-id` | Your RAG tenant ID |
+| `--api-key` | Tenant API key (or `RAG_API_KEY` env var) |
 | `--url` | Starting URL to crawl |
 
 ### Optional Options
@@ -53,14 +53,14 @@ node crawl.js --tenant-id <id> --url <start-url> [options]
 **Basic crawl:**
 ```bash
 node crawl.js \
-  --tenant-id a68cb506-9e74-4e23-8cdc-6502d27cc3a1 \
+  --api-key rag_your_tenant_key \
   --url https://docs.example.com
 ```
 
 **Crawl with URL filtering:**
 ```bash
 node crawl.js \
-  --tenant-id a68cb506-9e74-4e23-8cdc-6502d27cc3a1 \
+  --api-key rag_your_tenant_key \
   --url https://clickhouse.com/docs/sql-reference/functions/string-functions \
   --include "/docs/sql-reference/**" \
   --exclude "/docs/sql-reference/old/**" \
@@ -70,7 +70,7 @@ node crawl.js \
 **Dry run to see what would be crawled:**
 ```bash
 node crawl.js \
-  --tenant-id abc123 \
+  --api-key rag_abc123 \
   --url https://docs.example.com \
   --dry-run
 ```
@@ -78,7 +78,7 @@ node crawl.js \
 **Multiple include patterns:**
 ```bash
 node crawl.js \
-  --tenant-id abc123 \
+  --api-key rag_abc123 \
   --url https://example.com \
   --include "/docs/**" \
   --include "/guides/**" \
@@ -121,7 +121,7 @@ For production use, tenants should run this crawler from their own infrastructur
 ```bash
 # From tenant's server
 RAG_URL=https://rag.yourservice.com node crawl.js \
-  --tenant-id $TENANT_ID \
+  --api-key $RAG_API_KEY \
   --url https://their-docs.com \
   --rag-url $RAG_URL
 ```

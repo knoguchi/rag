@@ -23,6 +23,11 @@ export class ChatWidget {
   private placeholder: string;
   private isOpen = false;
   private isLoading = false;
+  /** Per-widget conversation session for server-side memory */
+  private sessionId: string =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `s-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
   // Shadow DOM container
   private shadowHost!: HTMLDivElement;
@@ -264,7 +269,7 @@ export class ChatWidget {
     const loadingEl = this.addLoadingMessage();
 
     try {
-      const response = await this.client.query(question);
+      const response = await this.client.query(question, { sessionId: this.sessionId });
       loadingEl.remove();
       this.addAssistantMessage(response.answer, response.sources);
     } catch (error) {

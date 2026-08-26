@@ -8,14 +8,14 @@
  * // Option 1: Use the API client directly
  * const client = new RAGClient({
  *   baseUrl: 'http://localhost:8080',
- *   tenantId: 'your-tenant-id',
+ *   apiKey: 'your-api-key',
  * });
  * const response = await client.query('How do I create a database?');
  *
  * // Option 2: Drop-in chat widget
  * new ChatWidget({
  *   baseUrl: 'http://localhost:8080',
- *   tenantId: 'your-tenant-id',
+ *   apiKey: 'your-api-key',
  * });
  * ```
  */

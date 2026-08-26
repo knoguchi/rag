@@ -16,15 +16,16 @@ import type {
 
 export class RAGClient {
   private baseUrl: string;
-  private tenantId: string;
-  private apiKey?: string;
+  private apiKey: string;
   private timeout: number;
 
   constructor(config: RAGClientConfig) {
     this.baseUrl = config.baseUrl.replace(/\/$/, ''); // Remove trailing slash
-    this.tenantId = config.tenantId;
     this.apiKey = config.apiKey;
     this.timeout = config.timeout ?? 30000;
+    if (!this.apiKey) {
+      throw new Error('RAGClient requires an apiKey');
+    }
   }
 
   /**
@@ -34,8 +35,8 @@ export class RAGClient {
     const response = await this.fetch('/v1/query', {
       method: 'POST',
       body: JSON.stringify({
-        tenant_id: this.tenantId,
         query: question,
+        session_id: options?.sessionId,
         options: options ? {
           top_k: options.topK,
           min_score: options.minScore,
@@ -72,8 +73,8 @@ export class RAGClient {
         'Accept': 'text/event-stream',
       },
       body: JSON.stringify({
-        tenant_id: this.tenantId,
         query: question,
+        session_id: options?.sessionId,
         options: options ? {
           top_k: options.topK,
           min_score: options.minScore,
@@ -100,17 +101,22 @@ export class RAGClient {
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
 
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
+        for (const rawLine of lines) {
+          const line = rawLine.trim();
+          if (line !== '') {
+            const data = line.startsWith('data:') ? line.slice(5).trim() : line;
             if (data === '[DONE]') {
               callback({ type: 'done' });
               return;
             }
 
             try {
-              const event = JSON.parse(data);
-              if (event.token) {
+              // grpc-gateway wraps each stream message as {"result": {...}}
+              const parsed = JSON.parse(data);
+              const event = parsed.result ?? parsed;
+              if (event.error) {
+                callback({ type: 'error', error: event.error.message ?? String(event.error) });
+              } else if (event.token) {
                 callback({ type: 'token', token: event.token });
               } else if (event.source) {
                 callback({ type: 'source', source: this.mapChunk(event.source) });
@@ -145,7 +151,6 @@ export class RAGClient {
     const response = await this.fetch('/v1/retrieve', {
       method: 'POST',
       body: JSON.stringify({
-        tenant_id: this.tenantId,
         query: question,
         options: options ? {
           top_k: options.topK,
@@ -168,7 +173,6 @@ export class RAGClient {
     const response = await this.fetch('/v1/documents/ingest', {
       method: 'POST',
       body: JSON.stringify({
-        tenant_id: this.tenantId,
         content,
         source,
         title: options?.title,
@@ -192,7 +196,6 @@ export class RAGClient {
     const response = await this.fetch('/v1/documents/ingest-url', {
       method: 'POST',
       body: JSON.stringify({
-        tenant_id: this.tenantId,
         url,
         title: options?.title,
         metadata: options?.metadata,
@@ -212,7 +215,7 @@ export class RAGClient {
    * Get a document by ID
    */
   async getDocument(documentId: string): Promise<Document> {
-    const response = await this.fetch(`/v1/documents/${documentId}?tenant_id=${this.tenantId}`);
+    const response = await this.fetch(`/v1/documents/${documentId}`);
     const data = await response.json();
     return this.mapDocument(data);
   }
@@ -221,7 +224,7 @@ export class RAGClient {
    * List all documents for the tenant
    */
   async listDocuments(): Promise<Document[]> {
-    const response = await this.fetch(`/v1/documents?tenant_id=${this.tenantId}`);
+    const response = await this.fetch(`/v1/documents`);
     const data = await response.json();
     return (data.documents || []).map(this.mapDocument);
   }
@@ -230,7 +233,7 @@ export class RAGClient {
    * Delete a document
    */
   async deleteDocument(documentId: string): Promise<void> {
-    await this.fetch(`/v1/documents/${documentId}?tenant_id=${this.tenantId}`, {
+    await this.fetch(`/v1/documents/${documentId}`, {
       method: 'DELETE',
     });
   }
@@ -244,9 +247,7 @@ export class RAGClient {
       ...((options?.headers as Record<string, string>) || {}),
     };
 
-    if (this.apiKey) {
-      headers['X-API-Key'] = this.apiKey;
-    }
+    headers['X-API-Key'] = this.apiKey;
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);

@@ -78,14 +78,31 @@ Chunking strategies:
 
 The semantic chunker prepends section headers to chunks so retrieval has context. Code blocks and tables are never split.
 
-### 3. Query Engine
+### 3. Query Engine (ragcore)
 
 ```mermaid
 graph LR
-    A[Question] --> B[Embed] --> C[Vector Search] --> D[Filter] --> E[Build Prompt] --> F[LLM] --> G[Stream Response]
+    A[Question] --> R[Rewrite] --> B[Embed + BM25] --> C[Hybrid Search RRF] --> D[Dedupe] --> RR[Rerank] --> E[Build Prompt] --> F[LLM] --> G[Stream Response]
 ```
 
-Embed the question with the same model used for docs, search Qdrant for top_k similar chunks, filter out low scores, assemble prompt with system_prompt + context + question, then stream LLM response.
+The tenant-agnostic engine lives in `server/internal/ragcore` and is addressed
+by an opaque namespace (the app layer passes the tenant ID):
+
+1. **Query rewriting** — with conversation history, one LLM call condenses the
+   follow-up into a standalone search query ("what about its pricing?" →
+   "Acme Cloud pricing"). Falls back to the raw query on any failure.
+2. **Hybrid retrieval** — the query is embedded (dense) and BM25-vectorized
+   (sparse, FNV-hashed terms; Qdrant applies IDF server-side); both prefetches
+   are fused with Reciprocal Rank Fusion. `min_score` applies to the dense
+   prefetch only — fused RRF scores are rank-scale, not cosine.
+3. **Dedupe** — near-duplicate chunks removed by Jaccard similarity.
+4. **Rerank** (per-tenant flag) — listwise LLM rerank of the candidates.
+5. **Generate** — prompt assembled from system prompt + situating context +
+   chunks + original question, streamed from the LLM.
+
+**Contextual retrieval** (per-tenant flag): at ingestion, an LLM writes 1-2
+situating sentences per chunk, which are embedded (dense and sparse) with the
+chunk. Slower ingestion, better retrieval for out-of-context chunks.
 
 ### 4. Streaming
 
@@ -131,44 +148,35 @@ Isolation happens at every layer:
 
 ## Authentication
 
-RAG-as-a-service follows the same pattern as other *-as-a-service APIs (Algolia, Stripe, Firebase):
+Every request carries an `X-API-Key` header (forwarded by the HTTP gateway
+into gRPC metadata). Two kinds of keys:
 
-```mermaid
-graph TB
-    subgraph Admin
-        A[Tenant Admin UI]
-    end
+- **Tenant keys** (`rag_...`): identify *and* scope the caller. The server
+  derives the tenant from the key — requests carry no tenant ID, so
+  cross-tenant access is impossible by construction. Keys are stored as
+  SHA-256 hashes (plus a display prefix); the full key is returned exactly
+  once, at tenant creation or key regeneration.
+- **Admin key** (`ADMIN_API_KEY` env): required for tenant management
+  (create/list/delete/regenerate). Tenants may read and update only
+  themselves with their own key.
 
-    subgraph "RAG Service"
-        B["/admin/* — JWT protected"]
-        C["/v1/* — API Key + CORS"]
-    end
+Data access is tenant-scoped at every layer: the auth context in the service
+layer, tenant predicates in SQL (including `document_chunks.tenant_id`), and
+one Qdrant collection per tenant. A document belonging to another tenant is
+indistinguishable from a missing one (404, no existence oracle).
 
-    subgraph Clients
-        D[AI Assistant Widget]
-        E[Client SDK]
-    end
-
-    A -->|JWT| B
-    D -->|API Key| C
-    E -->|API Key| C
-```
-
-**API Key + CORS** is standard for JAMstack integrations:
-- Browser requests restricted by CORS (allowed origins configured per-tenant)
-- API key visible in page source (accepted trade-off, same as Algolia/Firebase)
-- Non-browser clients can still call the API with the key
-
-**JWT** is for tenant admins managing their RAG instance through a dashboard.
+**API key in the browser** is an accepted JAMstack trade-off (same as
+Algolia/Firebase); CORS restricts browser callers to configured origins, and
+wildcard CORS never allows credentials.
 
 ## Tech Stack
 
 | Component | Technology | Purpose |
 |-----------|------------|---------|
 | Backend | Go | Single binary, good performance |
-| Vector DB | Qdrant | Similarity search with filtering |
+| Vector DB | Qdrant | Hybrid dense+sparse search, RRF fusion |
 | Metadata | PostgreSQL | Tenant/document storage |
-| LLM | Ollama | Local inference, Mac GPU support |
+| LLM | Ollama or OpenAI-compatible (llama.cpp, vLLM) | Local inference |
 | Embeddings | nomic-embed-text | Fast, quality embeddings for docs |
 | Client | TypeScript | SDK + AI Assistant widget |
 | Crawler | Playwright | JS rendering, HTML→Markdown |
@@ -186,13 +194,37 @@ GRPC_PORT=9090
 DATABASE_URL=postgres://...
 QDRANT_URL=http://localhost:6333
 
-# Ollama
-OLLAMA_URL=http://localhost:11434
+# LLM provider: "ollama" or "openai" (llama.cpp llama-server, vLLM, ...)
+LLM_PROVIDER=ollama
+# OLLAMA_URL=http://localhost:11434
+# LLM_BASE_URL=http://localhost:8081/v1        # provider=openai (generation)
+# EMBEDDING_BASE_URL=http://localhost:8082/v1  # provider=openai (embeddings)
 OLLAMA_EMBEDDING_MODEL=nomic-embed-text
 OLLAMA_LLM_MODEL=llama3.2
+
+# Auth
+ADMIN_API_KEY=...
+CORS_ALLOWED_ORIGINS=https://your-site.example
+
+# Pipeline
+QUERY_REWRITE_ENABLED=true
+DEFAULT_HYBRID_ENABLED=true
+DEFAULT_RERANKER_ENABLED=false
+DEFAULT_CONTEXTUAL_RETRIEVAL=false
 
 # Defaults
 DEFAULT_CHUNK_METHOD=semantic
 DEFAULT_TOP_K=4
 DEFAULT_MIN_SCORE=0.35
+```
+
+## Migrating pre-hybrid tenants
+
+Tenants created before hybrid search have dense-only Qdrant collections.
+`server/cmd/ragreindex` rebuilds a tenant's collection as hybrid from the
+chunks in Postgres (no re-crawl) and enables the flag:
+
+```bash
+cd server && go run ./cmd/ragreindex --tenant <uuid>   # or --all
+# add --contextual to also backfill situating context (slow)
 ```

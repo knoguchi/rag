@@ -11,11 +11,13 @@ Add an AI chat widget to any website. Multi-tenant RAG (Retrieval-Augmented Gene
 ## Features
 
 **Backend**
-- Multi-tenant with isolated vector collections and config per tenant
-- Local LLM via Ollama (`llama3.2` + `nomic-embed-text`)
+- Multi-tenant with isolated vector collections, hashed API keys, and per-tenant config
+- Hybrid retrieval: dense embeddings + BM25 sparse vectors fused with RRF (Qdrant)
+- Conversation-aware query rewriting for multi-turn sessions
+- Optional LLM reranking and contextual retrieval (per-tenant flags)
+- Local LLM via Ollama or any OpenAI-compatible server (llama.cpp, vLLM)
 - Semantic chunking that preserves code blocks and heading hierarchy
-- Streaming responses via Server-Sent Events (SSE)
-- gRPC and REST APIs via grpc-gateway
+- Streaming responses, gRPC and REST APIs via grpc-gateway
 
 **Client SDK**
 - Drop-in chat widget for any website (JAMstack friendly)
@@ -90,7 +92,7 @@ npm run build
 <script src="path/to/rag-sdk.browser.js"></script>
 <script>
   new ChatWidget({
-    tenantId: 'your-tenant-id',
+    apiKey: 'your-tenant-api-key',
     baseUrl: 'http://localhost:8080'
   });
 </script>
@@ -98,35 +100,44 @@ npm run build
 
 ### 4. Create a Tenant and Ingest Documents
 
-1. **Create a tenant** via API:
+1. **Create a tenant** via the admin API (requires `ADMIN_API_KEY` on the
+   server). The response contains the tenant's API key — it is shown exactly
+   once, so store it securely:
    ```bash
    curl -X POST http://localhost:8080/v1/tenants \
      -H "Content-Type: application/json" \
+     -H "X-API-Key: $ADMIN_API_KEY" \
      -d '{"name": "My Tenant"}'
+   # => {"tenant": {...}, "api_key": "rag_..."}
    ```
 
-2. **Run the crawler** to ingest documents:
+2. **Run the crawler** to ingest documents (authenticates with the tenant key):
    ```bash
    cd crawler
    npm install
    npx playwright install chromium
 
    node crawl.js \
-     --tenant-id YOUR_TENANT_ID \
+     --api-key rag_YOUR_TENANT_KEY \
      --url https://your-docs-site.com \
      --max-pages 50
    ```
 
 ## API Endpoints
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/v1/tenants` | POST | Create tenant |
-| `/v1/tenants/:id` | GET | Get tenant |
-| `/v1/documents/ingest` | POST | Ingest document |
-| `/v1/documents/ingest-url` | POST | Ingest from URL |
-| `/v1/query` | POST | Query (non-streaming) |
-| `/v1/query/stream` | POST | Query (streaming SSE) |
+All endpoints require an `X-API-Key` header: the admin key for tenant
+management, a tenant key for everything else. The tenant is derived from the
+key — requests never carry a tenant ID.
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/v1/tenants` | POST | admin | Create tenant (returns the API key, once) |
+| `/v1/tenants/:id` | GET | self or admin | Get tenant (no key in response) |
+| `/v1/documents/ingest` | POST | tenant | Ingest document |
+| `/v1/documents/ingest-url` | POST | tenant | Ingest from URL |
+| `/v1/query` | POST | tenant | Query (non-streaming) |
+| `/v1/query/stream` | POST | tenant | Query (streaming) |
+| `/v1/retrieve` | POST | tenant | Retrieval only, no generation |
 
 ## Development
 

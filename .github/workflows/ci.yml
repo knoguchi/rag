@@ -27,6 +27,9 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Lint protobuf
+        run: buf lint
+
       - name: Generate protobuf
         run: buf generate
 

@@ -1,5 +1,11 @@
 # RAG Client SDK
 
+> **v2 breaking change**: the SDK now authenticates with the tenant **API key
+> only** — `tenantId` is gone and `apiKey` is required. The server derives the
+> tenant from the key, so cross-tenant requests are impossible by
+> construction. Pass `{ sessionId }` in query options to enable server-side
+> conversation memory and follow-up question rewriting.
+
 TypeScript SDK for querying the RAG service from browser or Node.js.
 
 ## Quick Start
@@ -25,7 +31,7 @@ import { RAGClient } from '@knoguchi/rag-sdk';
 
 const rag = new RAGClient({
   baseUrl: 'http://localhost:8080',
-  tenantId: 'your-tenant-id'
+  apiKey: 'your-tenant-api-key'
 });
 
 const response = await rag.query('How do I create a VM?');
@@ -69,7 +75,7 @@ import { RAGClient } from '@knoguchi/rag-sdk';
 
 const rag = new RAGClient({
   baseUrl: process.env.NEXT_PUBLIC_RAG_URL,
-  tenantId: process.env.NEXT_PUBLIC_TENANT_ID
+  apiKey: process.env.NEXT_PUBLIC_RAG_API_KEY
 });
 
 function ChatWidget() {
@@ -174,7 +180,7 @@ import { RAGClient } from '@knoguchi/rag-sdk';
 
 const rag = new RAGClient({
   baseUrl: import.meta.env.VITE_RAG_URL,
-  tenantId: import.meta.env.VITE_TENANT_ID
+  apiKey: import.meta.env.VITE_RAG_API_KEY
 });
 
 const messages = ref([]);
@@ -219,7 +225,7 @@ function getPartComponent(type) {
 
   const rag = new RAGClient({
     baseUrl: import.meta.env.PUBLIC_RAG_URL,
-    tenantId: import.meta.env.PUBLIC_TENANT_ID
+    apiKey: import.meta.env.PUBLIC_RAG_API_KEY
   });
 
   const renderer = new RAGResponseRenderer({ classPrefix: 'rag' });
@@ -292,7 +298,7 @@ function getPartComponent(type) {
   <script>
     const rag = new RAGClient({
       baseUrl: 'http://localhost:8080',
-      tenantId: 'your-tenant-id'
+      apiKey: 'your-tenant-api-key'
     });
 
     const renderer = new RAGResponseRenderer({ classPrefix: 'rag' });
@@ -339,7 +345,7 @@ For a more interactive experience, use streaming:
 ```javascript
 const rag = new RAGClient({
   baseUrl: 'http://localhost:8080',
-  tenantId: 'your-tenant-id'
+  apiKey: 'your-tenant-api-key'
 });
 
 await rag.queryStream(
@@ -399,7 +405,7 @@ This generates classes like `docs-text`, `docs-list`, `docs-code`, etc.
 ```javascript
 const rag = new RAGClient({
   baseUrl: 'http://localhost:8080',  // Required: API endpoint
-  tenantId: 'your-tenant-id',             // Required: Your tenant ID
+  apiKey: 'your-tenant-api-key',             // Required: Your tenant ID
   options: {                               // Optional: Default query options
     topK: 10,                              // Number of chunks to retrieve
     minScore: 0.3                          // Minimum similarity score
@@ -443,10 +449,10 @@ try {
 1. **Environment Variables**: Never hardcode tenant IDs in client code
    ```javascript
    // Next.js
-   tenantId: process.env.NEXT_PUBLIC_TENANT_ID
+   apiKey: process.env.NEXT_PUBLIC_RAG_API_KEY
 
    // Vite
-   tenantId: import.meta.env.VITE_TENANT_ID
+   apiKey: import.meta.env.VITE_RAG_API_KEY
    ```
 
 2. **Loading States**: Show typing indicators while waiting

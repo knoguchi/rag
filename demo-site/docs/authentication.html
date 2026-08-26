@@ -240,12 +240,10 @@ demo auth audit-log --start 2024-01-01 --end 2024-01-31 --format csv > audit.csv
     </footer>
 
     <!-- AI Assistant -->
+    <script src="../demo-config.js"></script>
     <script src="../rag-sdk.browser.js"></script>
     <script>
-      new ChatWidget({
-        tenantId: '00000000-0000-0000-0000-000000000001',
-        baseUrl: 'http://localhost:8080'
-      });
+      new ChatWidget(window.DEMO_RAG_CONFIG);
     </script>
 </body>
 </html>

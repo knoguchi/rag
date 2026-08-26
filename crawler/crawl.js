@@ -9,10 +9,10 @@
  * - Extracts metadata (title, description, breadcrumbs)
  *
  * Usage:
- *   node crawl.js --tenant-id <id> --url <start-url> [options]
+ *   node crawl.js --api-key <key> --url <start-url> [options]
  *
  * Options:
- *   --tenant-id      Required. Tenant ID for document ingestion
+ *   --api-key        Required. Tenant API key (or RAG_API_KEY env var)
  *   --url            Required. Starting URL to crawl
  *   --max-depth      Max crawl depth (default: 3)
  *   --max-pages      Max pages to crawl (default: 100)
@@ -24,7 +24,7 @@
  *   --debug          Show converted markdown for debugging
  *
  * Examples:
- *   node crawl.js --tenant-id abc123 --url https://docs.example.com \
+ *   node crawl.js --api-key rag_abc123 --url https://docs.example.com \
  *     --include "/docs/**" --exclude "/docs/old/**" --max-pages 50
  */
 
@@ -35,7 +35,7 @@ import { htmlToMarkdown, extractMetadata, findMainContent } from './html-to-mark
 // Parse command line arguments
 const { values: args } = parseArgs({
   options: {
-    'tenant-id': { type: 'string' },
+    'api-key': { type: 'string' },
     'url': { type: 'string' },
     'max-depth': { type: 'string', default: '3' },
     'max-pages': { type: 'string', default: '100' },
@@ -60,10 +60,10 @@ Features:
 - Extracts metadata (title, description, breadcrumbs)
 
 Usage:
-  node crawl.js --tenant-id <id> --url <start-url> [options]
+  node crawl.js --api-key <key> --url <start-url> [options]
 
 Options:
-  --tenant-id      Required. Tenant ID for document ingestion
+  --api-key        Required. Tenant API key (or RAG_API_KEY env var)
   --url            Required. Starting URL to crawl
   --max-depth      Max crawl depth (default: 3)
   --max-pages      Max pages to crawl (default: 100)
@@ -76,21 +76,22 @@ Options:
   --help           Show this help message
 
 Examples:
-  node crawl.js --tenant-id abc123 --url https://docs.example.com \\
+  node crawl.js --api-key rag_abc123 --url https://docs.example.com \\
     --include "/docs/**" --exclude "/docs/old/**" --max-pages 50
 `);
   process.exit(0);
 }
 
 // Validate required args
-if (!args['tenant-id'] || !args['url']) {
-  console.error('Error: --tenant-id and --url are required');
+const apiKey = args['api-key'] || process.env.RAG_API_KEY;
+if (!apiKey || !args['url']) {
+  console.error('Error: --api-key (or RAG_API_KEY) and --url are required');
   console.error('Use --help for usage information');
   process.exit(1);
 }
 
 const config = {
-  tenantId: args['tenant-id'],
+  apiKey,
   startUrl: args['url'],
   maxDepth: parseInt(args['max-depth'], 10),
   maxPages: parseInt(args['max-pages'], 10),
@@ -197,9 +198,9 @@ async function ingestDocument(url, title, content, metadata = {}) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'X-API-Key': config.apiKey,
       },
       body: JSON.stringify({
-        tenant_id: config.tenantId,
         content: content,
         title: title,
         source: url,
@@ -225,7 +226,7 @@ async function ingestDocument(url, title, content, metadata = {}) {
 // Main crawler
 async function main() {
   console.log('=== RAG Smart Crawler ===');
-  console.log(`Tenant ID: ${config.tenantId}`);
+
   console.log(`Start URL: ${config.startUrl}`);
   console.log(`Max Depth: ${config.maxDepth}`);
   console.log(`Max Pages: ${config.maxPages}`);
