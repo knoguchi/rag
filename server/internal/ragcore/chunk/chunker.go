@@ -68,11 +68,6 @@ func estimateTokens(text string) int {
 	return words
 }
 
-// estimateTokensFromWords converts word count to approximate token count
-func estimateTokensFromWords(wordCount int) int {
-	return wordCount
-}
-
 // ============================================================================
 // Fixed Chunking
 // ============================================================================

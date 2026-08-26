@@ -190,11 +190,9 @@ func (p *Pipeline) ProcessWithMetadata(ctx context.Context, content string, meta
 		}
 
 		// Add provided metadata (middle priority)
-		if metadata != nil {
-			for k, v := range metadata {
-				if _, exists := chunks[i].Metadata[k]; !exists {
-					chunks[i].Metadata[k] = v
-				}
+		for k, v := range metadata {
+			if _, exists := chunks[i].Metadata[k]; !exists {
+				chunks[i].Metadata[k] = v
 			}
 		}
 

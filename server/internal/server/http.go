@@ -271,7 +271,7 @@ func healthCheckHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{
+		_ = json.NewEncoder(w).Encode(map[string]string{
 			"status": "healthy",
 		})
 	}
@@ -289,7 +289,7 @@ func readinessCheckHandler(dbChecker HealthChecker) http.HandlerFunc {
 				checks["database"] = err.Error()
 				w.WriteHeader(http.StatusServiceUnavailable)
 				checks["status"] = "not ready"
-				json.NewEncoder(w).Encode(checks)
+				_ = json.NewEncoder(w).Encode(checks)
 				return
 			}
 			checks["database"] = "ok"
@@ -297,7 +297,7 @@ func readinessCheckHandler(dbChecker HealthChecker) http.HandlerFunc {
 
 		checks["status"] = "ready"
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(checks)
+		_ = json.NewEncoder(w).Encode(checks)
 	}
 }
 

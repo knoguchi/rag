@@ -545,12 +545,13 @@ func extractTitle(html string) string {
 
 // stripHTML removes HTML tags and returns plain text
 func stripHTML(html string) string {
-	// Remove script and style elements
-	re := regexp.MustCompile(`(?is)<(script|style)[^>]*>.*?</\1>`)
-	text := re.ReplaceAllString(html, "")
+	// Remove script and style elements (RE2 has no backreferences, so each
+	// element gets its own pattern)
+	text := regexp.MustCompile(`(?is)<script[^>]*>.*?</script>`).ReplaceAllString(html, "")
+	text = regexp.MustCompile(`(?is)<style[^>]*>.*?</style>`).ReplaceAllString(text, "")
 
 	// Remove all HTML tags
-	re = regexp.MustCompile(`<[^>]+>`)
+	re := regexp.MustCompile(`<[^>]+>`)
 	text = re.ReplaceAllString(text, " ")
 
 	// Clean up whitespace
