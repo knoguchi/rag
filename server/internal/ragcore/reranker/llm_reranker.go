@@ -7,8 +7,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/knoguchi/rag/internal/llm"
-	"github.com/knoguchi/rag/internal/vectorstore"
+	"github.com/knoguchi/rag/internal/ragcore/llm"
+	"github.com/knoguchi/rag/internal/ragcore/vectorstore"
 )
 
 // LLMReranker uses an LLM to re-score query-document pairs for improved relevance.

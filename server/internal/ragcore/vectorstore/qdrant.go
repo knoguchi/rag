@@ -51,14 +51,14 @@ func (s *QdrantStore) Close() error {
 	return s.client.Close()
 }
 
-// collectionName returns the collection name for a tenant
-func (s *QdrantStore) collectionName(tenantID string) string {
-	return fmt.Sprintf("tenant_%s", tenantID)
+// collectionName returns the collection name for a namespace
+func (s *QdrantStore) collectionName(namespace string) string {
+	return fmt.Sprintf("tenant_%s", namespace)
 }
 
-// CreateCollection creates a new collection for a tenant (dense vectors only)
-func (s *QdrantStore) CreateCollection(ctx context.Context, tenantID string, dimension int) error {
-	name := s.collectionName(tenantID)
+// CreateCollection creates a new collection for a namespace (dense vectors only)
+func (s *QdrantStore) CreateCollection(ctx context.Context, namespace string, dimension int) error {
+	name := s.collectionName(namespace)
 
 	err := s.client.CreateCollection(ctx, &qdrant.CreateCollection{
 		CollectionName: name,
@@ -75,8 +75,8 @@ func (s *QdrantStore) CreateCollection(ctx context.Context, tenantID string, dim
 }
 
 // CreateHybridCollection creates a collection with both dense and sparse vector support
-func (s *QdrantStore) CreateHybridCollection(ctx context.Context, tenantID string, dimension int) error {
-	name := s.collectionName(tenantID)
+func (s *QdrantStore) CreateHybridCollection(ctx context.Context, namespace string, dimension int) error {
+	name := s.collectionName(namespace)
 
 	err := s.client.CreateCollection(ctx, &qdrant.CreateCollection{
 		CollectionName: name,
@@ -97,9 +97,9 @@ func (s *QdrantStore) CreateHybridCollection(ctx context.Context, tenantID strin
 	return nil
 }
 
-// DeleteCollection deletes a tenant's collection
-func (s *QdrantStore) DeleteCollection(ctx context.Context, tenantID string) error {
-	name := s.collectionName(tenantID)
+// DeleteCollection deletes a namespace's collection
+func (s *QdrantStore) DeleteCollection(ctx context.Context, namespace string) error {
+	name := s.collectionName(namespace)
 
 	err := s.client.DeleteCollection(ctx, name)
 	if err != nil {
@@ -110,8 +110,8 @@ func (s *QdrantStore) DeleteCollection(ctx context.Context, tenantID string) err
 }
 
 // CollectionExists checks if a collection exists
-func (s *QdrantStore) CollectionExists(ctx context.Context, tenantID string) (bool, error) {
-	name := s.collectionName(tenantID)
+func (s *QdrantStore) CollectionExists(ctx context.Context, namespace string) (bool, error) {
+	name := s.collectionName(namespace)
 
 	exists, err := s.client.CollectionExists(ctx, name)
 	if err != nil {
@@ -123,12 +123,12 @@ func (s *QdrantStore) CollectionExists(ctx context.Context, tenantID string) (bo
 
 // Upsert inserts or updates chunks in the vector store
 // Supports both dense-only and hybrid (dense + sparse) collections
-func (s *QdrantStore) Upsert(ctx context.Context, tenantID string, chunks []Chunk) error {
+func (s *QdrantStore) Upsert(ctx context.Context, namespace string, chunks []Chunk) error {
 	if len(chunks) == 0 {
 		return nil
 	}
 
-	name := s.collectionName(tenantID)
+	name := s.collectionName(namespace)
 
 	points := make([]*qdrant.PointStruct, len(chunks))
 	for i, chunk := range chunks {
@@ -183,8 +183,8 @@ func (s *QdrantStore) Upsert(ctx context.Context, tenantID string, chunks []Chun
 }
 
 // Search performs similarity search
-func (s *QdrantStore) Search(ctx context.Context, tenantID string, vector []float32, topK int, minScore float32) ([]SearchResult, error) {
-	name := s.collectionName(tenantID)
+func (s *QdrantStore) Search(ctx context.Context, namespace string, vector []float32, topK int, minScore float32) ([]SearchResult, error) {
+	name := s.collectionName(namespace)
 
 	response, err := s.client.Query(ctx, &qdrant.QueryPoints{
 		CollectionName: name,
@@ -226,8 +226,8 @@ func (s *QdrantStore) Search(ctx context.Context, tenantID string, vector []floa
 }
 
 // Delete removes chunks by document ID
-func (s *QdrantStore) Delete(ctx context.Context, tenantID string, documentID string) error {
-	name := s.collectionName(tenantID)
+func (s *QdrantStore) Delete(ctx context.Context, namespace string, documentID string) error {
+	name := s.collectionName(namespace)
 
 	_, err := s.client.Delete(ctx, &qdrant.DeletePoints{
 		CollectionName: name,
@@ -249,12 +249,12 @@ func (s *QdrantStore) Delete(ctx context.Context, tenantID string, documentID st
 }
 
 // DeleteByIDs removes specific chunks by their IDs
-func (s *QdrantStore) DeleteByIDs(ctx context.Context, tenantID string, ids []string) error {
+func (s *QdrantStore) DeleteByIDs(ctx context.Context, namespace string, ids []string) error {
 	if len(ids) == 0 {
 		return nil
 	}
 
-	name := s.collectionName(tenantID)
+	name := s.collectionName(namespace)
 
 	pointIDs := make([]*qdrant.PointId, len(ids))
 	for i, id := range ids {
@@ -279,8 +279,8 @@ func (s *QdrantStore) DeleteByIDs(ctx context.Context, tenantID string, ids []st
 }
 
 // HybridSearch performs hybrid search combining dense and sparse vectors with RRF fusion
-func (s *QdrantStore) HybridSearch(ctx context.Context, tenantID string, denseVector []float32, sparseVector *SparseVector, topK int, minScore float32) ([]SearchResult, error) {
-	name := s.collectionName(tenantID)
+func (s *QdrantStore) HybridSearch(ctx context.Context, namespace string, denseVector []float32, sparseVector *SparseVector, topK int, minScore float32) ([]SearchResult, error) {
+	name := s.collectionName(namespace)
 
 	// Build prefetch queries for both dense and sparse
 	prefetchLimit := uint64(topK * 2) // Get more candidates for fusion

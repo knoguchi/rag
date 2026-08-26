@@ -18,7 +18,7 @@ package reranker
 import (
 	"context"
 
-	"github.com/knoguchi/rag/internal/vectorstore"
+	"github.com/knoguchi/rag/internal/ragcore/vectorstore"
 )
 
 // ScoredResult represents a search result with an additional reranking score.

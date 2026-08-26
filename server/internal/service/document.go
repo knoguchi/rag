@@ -16,10 +16,8 @@ import (
 
 	"github.com/google/uuid"
 	ragv1 "github.com/knoguchi/rag/gen/rag/v1"
-	"github.com/knoguchi/rag/internal/embedder"
-	"github.com/knoguchi/rag/internal/ingestion"
+	"github.com/knoguchi/rag/internal/ragcore"
 	"github.com/knoguchi/rag/internal/repository"
-	"github.com/knoguchi/rag/internal/vectorstore"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -31,8 +29,7 @@ type DocumentService struct {
 
 	docRepo    repository.DocumentRepository
 	tenantRepo repository.TenantRepository
-	embedder   embedder.Embedder
-	vectorDB   vectorstore.VectorStore
+	engine     *ragcore.Engine
 	httpClient *http.Client
 	wg         sync.WaitGroup
 }
@@ -41,14 +38,12 @@ type DocumentService struct {
 func NewDocumentService(
 	docRepo repository.DocumentRepository,
 	tenantRepo repository.TenantRepository,
-	embedder embedder.Embedder,
-	vectorDB vectorstore.VectorStore,
+	engine *ragcore.Engine,
 ) *DocumentService {
 	return &DocumentService{
 		docRepo:    docRepo,
 		tenantRepo: tenantRepo,
-		embedder:   embedder,
-		vectorDB:   vectorDB,
+		engine:     engine,
 		httpClient: &http.Client{Timeout: 30 * time.Second},
 	}
 }
@@ -311,7 +306,7 @@ func (s *DocumentService) DeleteDocument(ctx context.Context, req *ragv1.DeleteD
 	}
 
 	// Delete vectors from vector store
-	if err := s.vectorDB.Delete(ctx, doc.TenantID.String(), doc.ID.String()); err != nil {
+	if err := s.engine.DeleteDocument(ctx, doc.TenantID.String(), doc.ID.String()); err != nil {
 		slog.Warn("failed to delete vectors", "error", err, "doc_id", doc.ID)
 	}
 
@@ -377,6 +372,30 @@ func (s *DocumentService) GetDocumentChunks(ctx context.Context, req *ragv1.GetD
 	}, nil
 }
 
+// ingestedToDocumentChunks converts engine-ingested chunks to repository
+// DocumentChunks, preserving the chunk IDs used as vector point IDs.
+func ingestedToDocumentChunks(chunks []ragcore.IngestedChunk, documentID uuid.UUID) []*repository.DocumentChunk {
+	docChunks := make([]*repository.DocumentChunk, len(chunks))
+	now := time.Now()
+
+	for i, c := range chunks {
+		id, err := uuid.Parse(c.ID)
+		if err != nil {
+			id = uuid.New()
+		}
+		docChunks[i] = &repository.DocumentChunk{
+			ID:         id,
+			DocumentID: documentID,
+			ChunkIndex: c.Index,
+			Content:    c.Content,
+			Metadata:   c.Metadata,
+			CreatedAt:  now,
+		}
+	}
+
+	return docChunks
+}
+
 // processDocument processes a document asynchronously
 func (s *DocumentService) processDocument(ctx context.Context, doc *repository.Document, content string, tenant *repository.Tenant) {
 	// Update status to PROCESSING
@@ -386,72 +405,32 @@ func (s *DocumentService) processDocument(ctx context.Context, doc *repository.D
 		slog.Error("failed to update document status", "error", err, "doc_id", doc.ID)
 	}
 
-	// Create ingestion pipeline with tenant config
-	pipeline := ingestion.NewPipeline(ingestion.PipelineConfig{
-		Chunker: tenant.Config.Chunker,
-		DefaultMetadata: map[string]string{
+	// Run the core ingestion pipeline (chunk -> persist -> embed -> upsert)
+	ingested, err := s.engine.Ingest(ctx, ragcore.IngestInput{
+		Namespace:  doc.TenantID.String(),
+		DocumentID: doc.ID.String(),
+		Content:    content,
+		Metadata:   doc.Metadata,
+		ChunkDefaults: map[string]string{
 			"source": doc.Source,
 			"title":  doc.Title,
 		},
+		Chunker: tenant.Config.Chunker,
+	}, func(chunks []ragcore.IngestedChunk) error {
+		docChunks := ingestedToDocumentChunks(chunks, doc.ID)
+		if err := s.docRepo.CreateChunks(ctx, docChunks); err != nil {
+			return fmt.Errorf("failed to store chunks: %w", err)
+		}
+		return nil
 	})
-
-	// Process content into chunks
-	result, err := pipeline.ProcessWithMetadata(ctx, content, doc.Metadata)
 	if err != nil {
-		s.markDocumentFailed(ctx, doc, fmt.Sprintf("chunking failed: %v", err))
-		return
-	}
-
-	// Convert chunks for storage
-	docChunks := ingestion.ChunksToDocumentChunks(result.Chunks, doc.ID)
-
-	// Store chunks in repository
-	if err := s.docRepo.CreateChunks(ctx, docChunks); err != nil {
-		s.markDocumentFailed(ctx, doc, fmt.Sprintf("failed to store chunks: %v", err))
-		return
-	}
-
-	// Generate embeddings for all chunks
-	chunkContents := make([]string, len(result.Chunks))
-	for i, chunk := range result.Chunks {
-		chunkContents[i] = chunk.Content
-	}
-
-	embeddings, err := s.embedder.EmbedBatch(ctx, chunkContents)
-	if err != nil {
-		s.markDocumentFailed(ctx, doc, fmt.Sprintf("embedding failed: %v", err))
-		return
-	}
-
-	// Store vectors in vector store
-	vectorChunks := make([]vectorstore.Chunk, len(docChunks))
-	for i, chunk := range docChunks {
-		metadata := make(map[string]string)
-		for k, v := range chunk.Metadata {
-			metadata[k] = v
-		}
-		metadata["document_id"] = doc.ID.String()
-		metadata["title"] = doc.Title
-		metadata["source"] = doc.Source
-
-		vectorChunks[i] = vectorstore.Chunk{
-			ID:         chunk.ID.String(),
-			DocumentID: doc.ID.String(),
-			TenantID:   doc.TenantID.String(),
-			Content:    chunk.Content,
-			Vector:     embeddings[i],
-			Metadata:   metadata,
-		}
-	}
-
-	if err := s.vectorDB.Upsert(ctx, doc.TenantID.String(), vectorChunks); err != nil {
-		s.markDocumentFailed(ctx, doc, fmt.Sprintf("vector storage failed: %v", err))
+		s.markDocumentFailed(ctx, doc, err.Error())
 		return
 	}
 
 	// Mark document as ready
 	doc.Status = "READY"
-	doc.ChunkCount = len(docChunks)
+	doc.ChunkCount = len(ingested)
 	doc.UpdatedAt = time.Now()
 	if err := s.docRepo.Update(ctx, doc); err != nil {
 		slog.Error("failed to mark document ready", "error", err, "doc_id", doc.ID)
@@ -460,7 +439,7 @@ func (s *DocumentService) processDocument(ctx context.Context, doc *repository.D
 	// Update tenant usage
 	if err := s.tenantRepo.UpdateUsage(ctx, doc.TenantID, repository.TenantUsage{
 		DocumentCount: 1, // Increment
-		ChunkCount:    len(docChunks),
+		ChunkCount:    len(ingested),
 	}); err != nil {
 		slog.Warn("failed to update tenant usage", "error", err, "tenant_id", doc.TenantID)
 	}

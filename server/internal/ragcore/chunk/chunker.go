@@ -1,5 +1,5 @@
 // Package ingestion handles document processing: chunking, text extraction, and pipeline orchestration.
-package ingestion
+package chunk
 
 import (
 	"regexp"
@@ -7,7 +7,6 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/knoguchi/rag/internal/repository"
 )
 
 // Chunk represents a piece of chunked content
@@ -19,11 +18,11 @@ type Chunk struct {
 
 // Chunker handles text chunking with different strategies
 type Chunker struct {
-	config repository.ChunkerConfig
+	config Config
 }
 
 // NewChunker creates a new Chunker with the given configuration
-func NewChunker(config repository.ChunkerConfig) *Chunker {
+func NewChunker(config Config) *Chunker {
 	// Apply defaults if not set
 	if config.TargetSize <= 0 {
 		config.TargetSize = 512

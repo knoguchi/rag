@@ -1,4 +1,4 @@
-package ingestion
+package chunk
 
 import (
 	"context"
@@ -9,13 +9,20 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/knoguchi/rag/internal/repository"
 )
+
+// Config holds chunking configuration
+type Config struct {
+	Method     string `json:"method"`      // semantic, fixed, sentence
+	TargetSize int    `json:"target_size"` // target tokens per chunk
+	MaxSize    int    `json:"max_size"`    // max tokens per chunk
+	Overlap    int    `json:"overlap"`     // overlap tokens
+}
 
 // PipelineConfig holds configuration for the ingestion pipeline
 type PipelineConfig struct {
 	// Chunker configuration
-	Chunker repository.ChunkerConfig
+	Chunker Config
 
 	// Additional metadata to include in all chunks
 	DefaultMetadata map[string]string
@@ -74,7 +81,7 @@ func NewPipeline(config PipelineConfig) *Pipeline {
 // NewPipelineWithDefaults creates a pipeline with default configuration
 func NewPipelineWithDefaults() *Pipeline {
 	return NewPipeline(PipelineConfig{
-		Chunker: repository.ChunkerConfig{
+		Chunker: Config{
 			Method:     "semantic",
 			TargetSize: 512,
 			MaxSize:    1024,
@@ -234,7 +241,7 @@ func (p *Pipeline) ProcessBatch(ctx context.Context, contents []string) ([]*Pipe
 }
 
 // Rechunk allows reprocessing with a different chunking configuration
-func (p *Pipeline) Rechunk(ctx context.Context, content string, chunkerConfig repository.ChunkerConfig) (*PipelineResult, error) {
+func (p *Pipeline) Rechunk(ctx context.Context, content string, chunkerConfig Config) (*PipelineResult, error) {
 	// Create a temporary chunker with the new config
 	tempChunker := NewChunker(chunkerConfig)
 
@@ -322,39 +329,8 @@ func hashContent(content string) string {
 	return hex.EncodeToString(hash[:])
 }
 
-// ChunkToDocumentChunk converts a Chunk to a DocumentChunk for storage
-func ChunkToDocumentChunk(chunk Chunk, documentID uuid.UUID) *repository.DocumentChunk {
-	return &repository.DocumentChunk{
-		ID:         uuid.New(),
-		DocumentID: documentID,
-		ChunkIndex: chunk.Index,
-		Content:    chunk.Content,
-		Metadata:   chunk.Metadata,
-		CreatedAt:  time.Now(),
-	}
-}
-
-// ChunksToDocumentChunks converts multiple Chunks to DocumentChunks
-func ChunksToDocumentChunks(chunks []Chunk, documentID uuid.UUID) []*repository.DocumentChunk {
-	docChunks := make([]*repository.DocumentChunk, len(chunks))
-	now := time.Now()
-
-	for i, chunk := range chunks {
-		docChunks[i] = &repository.DocumentChunk{
-			ID:         uuid.New(),
-			DocumentID: documentID,
-			ChunkIndex: chunk.Index,
-			Content:    chunk.Content,
-			Metadata:   chunk.Metadata,
-			CreatedAt:  now,
-		}
-	}
-
-	return docChunks
-}
-
 // ValidateChunkerConfig validates a chunker configuration
-func ValidateChunkerConfig(config repository.ChunkerConfig) error {
+func ValidateChunkerConfig(config Config) error {
 	validMethods := map[string]bool{
 		"fixed":    true,
 		"semantic": true,
@@ -389,8 +365,8 @@ func ValidateChunkerConfig(config repository.ChunkerConfig) error {
 }
 
 // DefaultChunkerConfig returns the default chunker configuration
-func DefaultChunkerConfig() repository.ChunkerConfig {
-	return repository.ChunkerConfig{
+func DefaultChunkerConfig() Config {
+	return Config{
 		Method:     "semantic",
 		TargetSize: 512,
 		MaxSize:    1024,

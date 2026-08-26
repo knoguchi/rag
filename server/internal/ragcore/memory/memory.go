@@ -28,6 +28,8 @@ type Store struct {
 	maxMessages   int           // Max messages per conversation
 	maxSessions   int           // Max concurrent sessions
 	ttl           time.Duration // Time-to-live for conversations
+	done          chan struct{} // Closed to stop the cleanup goroutine
+	closeOnce     sync.Once
 }
 
 // NewStore creates a new conversation memory store.
@@ -42,6 +44,7 @@ func NewStoreWithLimit(maxMessages, maxSessions int, ttl time.Duration) *Store {
 		maxMessages:   maxMessages,
 		maxSessions:   maxSessions,
 		ttl:           ttl,
+		done:          make(chan struct{}),
 	}
 
 	// Start cleanup goroutine
@@ -131,14 +134,24 @@ func (s *Store) ClearSession(sessionID string) {
 	delete(s.conversations, sessionID)
 }
 
-// cleanupLoop periodically removes expired conversations.
+// cleanupLoop periodically removes expired conversations until Close is called.
 func (s *Store) cleanupLoop() {
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		s.cleanup()
+	for {
+		select {
+		case <-ticker.C:
+			s.cleanup()
+		case <-s.done:
+			return
+		}
 	}
+}
+
+// Close stops the cleanup goroutine. Safe to call multiple times.
+func (s *Store) Close() {
+	s.closeOnce.Do(func() { close(s.done) })
 }
 
 // evictOldest removes the least recently updated session. Must be called with mu held.

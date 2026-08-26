@@ -1,10 +1,10 @@
-package service
+package ragcore
 
 import (
 	"math"
 	"testing"
 
-	"github.com/knoguchi/rag/internal/vectorstore"
+	"github.com/knoguchi/rag/internal/ragcore/vectorstore"
 )
 
 func TestJaccardSimilarity_Identical(t *testing.T) {

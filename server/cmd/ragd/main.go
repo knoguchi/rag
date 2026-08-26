@@ -11,13 +11,14 @@ import (
 
 	"github.com/knoguchi/rag/internal/auth"
 	"github.com/knoguchi/rag/internal/config"
-	"github.com/knoguchi/rag/internal/embedder"
-	"github.com/knoguchi/rag/internal/llm"
+	"github.com/knoguchi/rag/internal/ragcore"
+	"github.com/knoguchi/rag/internal/ragcore/embedder"
+	"github.com/knoguchi/rag/internal/ragcore/llm"
+	"github.com/knoguchi/rag/internal/ragcore/vectorstore"
 	"github.com/knoguchi/rag/internal/repository"
 	"github.com/knoguchi/rag/internal/repository/postgres"
 	"github.com/knoguchi/rag/internal/server"
 	"github.com/knoguchi/rag/internal/service"
-	"github.com/knoguchi/rag/internal/vectorstore"
 )
 
 func main() {
@@ -95,10 +96,14 @@ func run() error {
 	// Initialize auth interceptor
 	authInterceptor := auth.NewAPIKeyInterceptor(tenantRepo, cfg.AdminAPIKey)
 
+	// Assemble the RAG engine
+	engine := ragcore.New(embed, llmClient, vectorStore)
+	defer engine.Close()
+
 	// Initialize services
-	tenantSvc := service.NewTenantService(tenantRepo, vectorStore, cfg)
-	documentSvc := service.NewDocumentService(documentRepo, tenantRepo, embed, vectorStore)
-	ragSvc := service.NewRAGService(tenantRepo, documentRepo, embed, vectorStore, llmClient)
+	tenantSvc := service.NewTenantService(tenantRepo, engine, cfg)
+	documentSvc := service.NewDocumentService(documentRepo, tenantRepo, engine)
+	ragSvc := service.NewRAGService(tenantRepo, engine)
 
 	// Create gRPC server
 	grpcServer, err := server.NewGRPCServer(server.GRPCServerConfig{

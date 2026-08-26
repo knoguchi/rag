@@ -1,14 +1,13 @@
-package ingestion
+package chunk
 
 import (
 	"strings"
 	"testing"
 
-	"github.com/knoguchi/rag/internal/repository"
 )
 
 func TestNewChunker_Defaults(t *testing.T) {
-	chunker := NewChunker(repository.ChunkerConfig{})
+	chunker := NewChunker(Config{})
 
 	// Should apply defaults
 	if chunker.config.TargetSize != 512 {
@@ -23,7 +22,7 @@ func TestNewChunker_Defaults(t *testing.T) {
 }
 
 func TestChunker_EmptyContent(t *testing.T) {
-	chunker := NewChunker(repository.ChunkerConfig{Method: "fixed"})
+	chunker := NewChunker(Config{Method: "fixed"})
 
 	chunks := chunker.Chunk("")
 	if chunks != nil {
@@ -37,7 +36,7 @@ func TestChunker_EmptyContent(t *testing.T) {
 }
 
 func TestChunker_FixedMethod(t *testing.T) {
-	chunker := NewChunker(repository.ChunkerConfig{
+	chunker := NewChunker(Config{
 		Method:     "fixed",
 		TargetSize: 10, // 10 words per chunk
 		MaxSize:    20,
@@ -72,7 +71,7 @@ func TestChunker_FixedMethod(t *testing.T) {
 }
 
 func TestChunker_SentenceMethod(t *testing.T) {
-	chunker := NewChunker(repository.ChunkerConfig{
+	chunker := NewChunker(Config{
 		Method:     "sentence",
 		TargetSize: 20,
 		MaxSize:    50,
@@ -95,7 +94,7 @@ func TestChunker_SentenceMethod(t *testing.T) {
 }
 
 func TestChunker_SemanticMethod(t *testing.T) {
-	chunker := NewChunker(repository.ChunkerConfig{
+	chunker := NewChunker(Config{
 		Method:     "semantic",
 		TargetSize: 50,
 		MaxSize:    100,
@@ -129,7 +128,7 @@ Run the following command to install.
 }
 
 func TestChunker_SemanticPreservesCodeBlocks(t *testing.T) {
-	chunker := NewChunker(repository.ChunkerConfig{
+	chunker := NewChunker(Config{
 		Method:     "semantic",
 		TargetSize: 20,
 		MaxSize:    100,

@@ -13,9 +13,9 @@ import (
 	"github.com/google/uuid"
 	ragv1 "github.com/knoguchi/rag/gen/rag/v1"
 	"github.com/knoguchi/rag/internal/config"
-	"github.com/knoguchi/rag/internal/embedder"
+	"github.com/knoguchi/rag/internal/ragcore/embedder"
 	"github.com/knoguchi/rag/internal/repository"
-	"github.com/knoguchi/rag/internal/vectorstore"
+	"github.com/knoguchi/rag/internal/ragcore"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -25,17 +25,17 @@ import (
 type TenantService struct {
 	ragv1.UnimplementedTenantServiceServer
 
-	repo        repository.TenantRepository
-	vectorStore vectorstore.VectorStore
-	cfg         *config.Config
+	repo   repository.TenantRepository
+	engine *ragcore.Engine
+	cfg    *config.Config
 }
 
 // NewTenantService creates a new TenantService
-func NewTenantService(repo repository.TenantRepository, vectorStore vectorstore.VectorStore, cfg *config.Config) *TenantService {
+func NewTenantService(repo repository.TenantRepository, engine *ragcore.Engine, cfg *config.Config) *TenantService {
 	return &TenantService{
-		repo:        repo,
-		vectorStore: vectorStore,
-		cfg:         cfg,
+		repo:   repo,
+		engine: engine,
+		cfg:    cfg,
 	}
 }
 
@@ -86,10 +86,8 @@ func (s *TenantService) CreateTenant(ctx context.Context, req *ragv1.CreateTenan
 		return nil, status.Errorf(codes.Internal, "failed to create tenant: %v", err)
 	}
 
-	// Create vector collection for the tenant
-	// The dimension depends on the embedding model; nomic-embed-text uses 768 dimensions
-	dimension := 768
-	if err := s.vectorStore.CreateCollection(ctx, tenant.ID.String(), dimension); err != nil {
+	// Create vector storage for the tenant (dimension comes from the engine's embedder)
+	if err := s.engine.CreateNamespace(ctx, tenant.ID.String()); err != nil {
 		slog.Error("failed to create vector collection", "error", err, "tenant_id", tenant.ID)
 	}
 
@@ -211,7 +209,7 @@ func (s *TenantService) DeleteTenant(ctx context.Context, req *ragv1.DeleteTenan
 	}
 
 	// Delete vector collection
-	if err := s.vectorStore.DeleteCollection(ctx, id.String()); err != nil {
+	if err := s.engine.DeleteNamespace(ctx, id.String()); err != nil {
 		slog.Warn("failed to delete vector collection", "error", err, "tenant_id", id)
 	}
 

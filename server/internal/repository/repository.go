@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/knoguchi/rag/internal/ragcore/chunk"
 )
 
 // ErrNotFound is returned when a requested entity does not exist
@@ -34,13 +35,8 @@ type TenantConfig struct {
 	RerankerEnabled  bool          `json:"reranker_enabled"`  // Enable LLM-based reranking (slower but more accurate)
 }
 
-// ChunkerConfig holds chunking configuration
-type ChunkerConfig struct {
-	Method     string `json:"method"`      // semantic, fixed, sentence
-	TargetSize int    `json:"target_size"` // target tokens per chunk
-	MaxSize    int    `json:"max_size"`    // max tokens per chunk
-	Overlap    int    `json:"overlap"`     // overlap tokens
-}
+// ChunkerConfig is the chunking configuration, defined in the ragcore chunk package.
+type ChunkerConfig = chunk.Config
 
 // TenantUsage holds tenant usage statistics
 type TenantUsage struct {
