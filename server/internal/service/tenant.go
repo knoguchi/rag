@@ -320,8 +320,10 @@ func (s *TenantService) buildTenantConfig(protoConfig *ragv1.TenantConfig) repos
 		MinScore:     s.cfg.DefaultMinScore,
 		SystemPrompt: defaultSystemPrompt,
 		// New tenants get hybrid-capable collections, so hybrid retrieval
-		// defaults on. Legacy tenants must reindex before enabling it.
-		HybridEnabled: true,
+		// can default on. Legacy tenants must reindex before enabling it.
+		HybridEnabled:              s.cfg.DefaultHybridEnabled,
+		RerankerEnabled:            s.cfg.DefaultRerankerEnabled,
+		ContextualRetrievalEnabled: s.cfg.DefaultContextualRetrieval,
 	}
 
 	if protoConfig == nil {

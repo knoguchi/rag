@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/caarlos0/env/v10"
 	"github.com/joho/godotenv"
@@ -25,10 +26,32 @@ type Config struct {
 	QdrantURL     string `env:"QDRANT_URL" envDefault:"http://localhost:6333"`
 	QdrantGRPCURL string `env:"QDRANT_GRPC_URL" envDefault:"localhost:6334"`
 
-	// Ollama
+	// LLM provider: "ollama" (native Ollama API) or "openai"
+	// (OpenAI-compatible API — llama.cpp llama-server, vLLM, etc.)
+	LLMProvider string `env:"LLM_PROVIDER" envDefault:"ollama"`
+
+	// OpenAI-compatible provider (LLM_PROVIDER=openai). llama.cpp serves one
+	// model per process, so generation and embeddings have separate URLs.
+	// URLs must include the /v1 prefix.
+	LLMBaseURL         string `env:"LLM_BASE_URL" envDefault:"http://localhost:8081/v1"`
+	EmbeddingBaseURL   string `env:"EMBEDDING_BASE_URL" envDefault:"http://localhost:8082/v1"`
+	LLMAPIKey          string `env:"LLM_API_KEY"`
+	EmbeddingDimension int    `env:"EMBEDDING_DIMENSION"` // 0 = resolve from model table
+
+	// Ollama (LLM_PROVIDER=ollama)
 	OllamaURL            string `env:"OLLAMA_URL" envDefault:"http://localhost:11434"`
 	OllamaEmbeddingModel string `env:"OLLAMA_EMBEDDING_MODEL" envDefault:"nomic-embed-text"`
 	OllamaLLMModel       string `env:"OLLAMA_LLM_MODEL" envDefault:"llama3.2"`
+
+	// RAG pipeline
+	QueryRewriteEnabled   bool          `env:"QUERY_REWRITE_ENABLED" envDefault:"true"`
+	QueryRewriteTimeout   time.Duration `env:"QUERY_REWRITE_TIMEOUT" envDefault:"10s"`
+	ContextualConcurrency int           `env:"CONTEXTUAL_CONCURRENCY" envDefault:"2"`
+
+	// Defaults for new tenants
+	DefaultHybridEnabled       bool `env:"DEFAULT_HYBRID_ENABLED" envDefault:"true"`
+	DefaultRerankerEnabled     bool `env:"DEFAULT_RERANKER_ENABLED" envDefault:"false"`
+	DefaultContextualRetrieval bool `env:"DEFAULT_CONTEXTUAL_RETRIEVAL" envDefault:"false"`
 
 	// Auth
 	AdminAPIKey        string   `env:"ADMIN_API_KEY"`
@@ -58,6 +81,9 @@ func (c *Config) IsDevelopment() bool {
 func (c *Config) Validate() error {
 	if c.RateLimitRPS < 0 || c.RateLimitBurst < 0 {
 		return fmt.Errorf("rate limit values cannot be negative")
+	}
+	if p := c.LLMProvider; p != "" && p != "ollama" && p != "openai" {
+		return fmt.Errorf("LLM_PROVIDER must be \"ollama\" or \"openai\", got %q", p)
 	}
 
 	wildcardCORS := false

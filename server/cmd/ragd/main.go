@@ -14,6 +14,7 @@ import (
 	"github.com/knoguchi/rag/internal/ragcore"
 	"github.com/knoguchi/rag/internal/ragcore/embedder"
 	"github.com/knoguchi/rag/internal/ragcore/llm"
+	"github.com/knoguchi/rag/internal/ragcore/reranker"
 	"github.com/knoguchi/rag/internal/ragcore/sparse"
 	"github.com/knoguchi/rag/internal/ragcore/vectorstore"
 	"github.com/knoguchi/rag/internal/repository"
@@ -80,29 +81,54 @@ func run() error {
 	defer vectorStore.Close()
 	slog.Info("connected to Qdrant")
 
-	// Initialize Ollama embedder
-	embed := embedder.NewOllamaEmbedder(embedder.OllamaConfig{
-		BaseURL: cfg.OllamaURL,
-		Model:   cfg.OllamaEmbeddingModel,
-	})
-	slog.Info("initialized Ollama embedder", "model", cfg.OllamaEmbeddingModel)
-
-	// Initialize Ollama LLM
-	llmClient := llm.NewOllamaClient(
-		llm.WithBaseURL(cfg.OllamaURL),
-		llm.WithModel(cfg.OllamaLLMModel),
-	)
-	slog.Info("initialized Ollama LLM", "model", cfg.OllamaLLMModel)
+	// Initialize embedder and LLM for the configured provider
+	var embed embedder.Embedder
+	var llmClient llm.LLM
+	switch cfg.LLMProvider {
+	case "openai":
+		// OpenAI-compatible servers: llama.cpp llama-server, vLLM, ...
+		embed = embedder.NewOpenAIEmbedder(embedder.OpenAIEmbedderConfig{
+			BaseURL:   cfg.EmbeddingBaseURL,
+			Model:     cfg.OllamaEmbeddingModel,
+			APIKey:    cfg.LLMAPIKey,
+			Dimension: cfg.EmbeddingDimension,
+		})
+		llmClient = llm.NewOpenAIClient(
+			llm.WithOpenAIBaseURL(cfg.LLMBaseURL),
+			llm.WithOpenAIModel(cfg.OllamaLLMModel),
+			llm.WithOpenAIAPIKey(cfg.LLMAPIKey),
+		)
+		slog.Info("initialized OpenAI-compatible provider",
+			"llm_url", cfg.LLMBaseURL, "embedding_url", cfg.EmbeddingBaseURL,
+			"llm_model", cfg.OllamaLLMModel, "embedding_model", cfg.OllamaEmbeddingModel)
+	default:
+		embed = embedder.NewOllamaEmbedder(embedder.OllamaConfig{
+			BaseURL: cfg.OllamaURL,
+			Model:   cfg.OllamaEmbeddingModel,
+		})
+		llmClient = llm.NewOllamaClient(
+			llm.WithBaseURL(cfg.OllamaURL),
+			llm.WithModel(cfg.OllamaLLMModel),
+		)
+		slog.Info("initialized Ollama provider",
+			"llm_model", cfg.OllamaLLMModel, "embedding_model", cfg.OllamaEmbeddingModel)
+	}
 
 	// Initialize auth interceptor
 	authInterceptor := auth.NewAPIKeyInterceptor(tenantRepo, cfg.AdminAPIKey)
 
-	// Assemble the RAG engine: BM25 sparse vectors for hybrid search and
-	// conversation-aware query rewriting for multi-turn retrieval
-	engine := ragcore.New(embed, llmClient, vectorStore,
+	// Assemble the RAG engine: BM25 sparse vectors for hybrid search,
+	// LLM reranking, conversation-aware query rewriting, and contextual
+	// ingestion (the last three gated per tenant / per config)
+	engineOpts := []ragcore.Option{
 		ragcore.WithSparseVectorizer(sparse.New()),
-		ragcore.WithRewriter(ragcore.NewRewriter(llmClient, ragcore.DefaultRewriteTimeout)),
-	)
+		ragcore.WithReranker(reranker.NewLLMReranker(llmClient, reranker.WithModel(cfg.OllamaLLMModel))),
+		ragcore.WithContextualConcurrency(cfg.ContextualConcurrency),
+	}
+	if cfg.QueryRewriteEnabled {
+		engineOpts = append(engineOpts, ragcore.WithRewriter(ragcore.NewRewriter(llmClient, cfg.QueryRewriteTimeout)))
+	}
+	engine := ragcore.New(embed, llmClient, vectorStore, engineOpts...)
 	defer engine.Close()
 
 	// Initialize services
