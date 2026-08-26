@@ -62,6 +62,38 @@ func (r *DocumentRepo) GetByHash(ctx context.Context, tenantID uuid.UUID, hash s
 	return r.scanDocument(ctx, query, tenantID, hash)
 }
 
+// ListBySource returns all documents for a tenant with the given source
+func (r *DocumentRepo) ListBySource(ctx context.Context, tenantID uuid.UUID, source string) ([]*repository.Document, error) {
+	query := `
+		SELECT id, tenant_id, source, title, content_hash, chunk_count, status, error_message, metadata, created_at, updated_at
+		FROM documents
+		WHERE tenant_id = $1 AND source = $2
+	`
+	rows, err := r.db.Pool.Query(ctx, query, tenantID, source)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list documents by source: %w", err)
+	}
+	defer rows.Close()
+
+	var docs []*repository.Document
+	for rows.Next() {
+		var doc repository.Document
+		var metadataJSON []byte
+		if err := rows.Scan(&doc.ID, &doc.TenantID, &doc.Source, &doc.Title, &doc.ContentHash,
+			&doc.ChunkCount, &doc.Status, &doc.ErrorMessage, &metadataJSON,
+			&doc.CreatedAt, &doc.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("failed to scan document: %w", err)
+		}
+		doc.Metadata = make(map[string]string)
+		if err := json.Unmarshal(metadataJSON, &doc.Metadata); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal metadata: %w", err)
+		}
+		docs = append(docs, &doc)
+	}
+
+	return docs, nil
+}
+
 func (r *DocumentRepo) scanDocument(ctx context.Context, query string, args ...any) (*repository.Document, error) {
 	var doc repository.Document
 	var metadataJSON []byte

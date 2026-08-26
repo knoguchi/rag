@@ -29,6 +29,9 @@ func (f *fakeDocRepo) GetByID(_ context.Context, tenantID, id uuid.UUID) (*repos
 func (f *fakeDocRepo) GetByHash(context.Context, uuid.UUID, string) (*repository.Document, error) {
 	return nil, repository.ErrNotFound
 }
+func (f *fakeDocRepo) ListBySource(context.Context, uuid.UUID, string) ([]*repository.Document, error) {
+	return nil, nil
+}
 func (f *fakeDocRepo) List(context.Context, uuid.UUID, string, int, int) ([]*repository.Document, int, error) {
 	return nil, 0, nil
 }

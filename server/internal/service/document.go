@@ -123,6 +123,29 @@ func (s *DocumentService) IngestDocument(ctx context.Context, req *ragv1.IngestD
 		}, nil
 	}
 
+	// Same source but different content means the page changed: replace the
+	// stale versions instead of accumulating them (re-crawls, auto-indexing
+	// of pages the user revisits). Only applies to explicit sources.
+	if req.Source != "" {
+		stale, err := s.docRepo.ListBySource(ctx, tenantID, req.Source)
+		if err != nil {
+			slog.Warn("failed to check for stale documents", "error", err, "source", req.Source)
+		}
+		for _, old := range stale {
+			slog.Info("replacing stale document for source",
+				"doc_id", old.ID, "source", req.Source, "tenant_id", tenantID)
+			if err := s.engine.DeleteDocument(ctx, tenantID.String(), old.ID.String()); err != nil {
+				slog.Warn("failed to delete stale vectors", "error", err, "doc_id", old.ID)
+			}
+			if err := s.docRepo.DeleteChunks(ctx, tenantID, old.ID); err != nil {
+				slog.Warn("failed to delete stale chunks", "error", err, "doc_id", old.ID)
+			}
+			if err := s.docRepo.Delete(ctx, tenantID, old.ID); err != nil {
+				slog.Warn("failed to delete stale document", "error", err, "doc_id", old.ID)
+			}
+		}
+	}
+
 	// Create document record
 	now := time.Now()
 	docID := uuid.New()

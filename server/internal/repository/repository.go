@@ -142,6 +142,9 @@ type DocumentRepository interface {
 	Create(ctx context.Context, doc *Document) error
 	GetByID(ctx context.Context, tenantID, id uuid.UUID) (*Document, error)
 	GetByHash(ctx context.Context, tenantID uuid.UUID, hash string) (*Document, error)
+	// ListBySource returns all documents a tenant has for a given source
+	// (e.g. a URL); used to replace stale versions on re-ingestion.
+	ListBySource(ctx context.Context, tenantID uuid.UUID, source string) ([]*Document, error)
 	List(ctx context.Context, tenantID uuid.UUID, status string, limit, offset int) ([]*Document, int, error)
 	Update(ctx context.Context, doc *Document) error
 	Delete(ctx context.Context, tenantID, id uuid.UUID) error
