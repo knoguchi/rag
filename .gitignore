@@ -47,3 +47,4 @@ npm-debug.log*
 
 # Test coverage
 coverage/
+deployments/docker-compose.local.yml
