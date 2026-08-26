@@ -16,10 +16,12 @@ type fakeLLM struct {
 	response string
 	err      error
 	calls    int
+	prompts  []string
 }
 
 func (f *fakeLLM) Generate(ctx context.Context, prompt string, opts llm.GenerateOptions) (string, error) {
 	f.calls++
+	f.prompts = append(f.prompts, prompt)
 	return f.response, f.err
 }
 

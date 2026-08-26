@@ -77,11 +77,11 @@ func NewOllamaClient(opts ...OllamaOption) *OllamaClient {
 
 // ollamaRequest represents the request body for Ollama's generate API.
 type ollamaRequest struct {
-	Model       string                 `json:"model"`
-	Prompt      string                 `json:"prompt"`
-	System      string                 `json:"system,omitempty"`
-	Stream      bool                   `json:"stream"`
-	Options     map[string]interface{} `json:"options,omitempty"`
+	Model   string                 `json:"model"`
+	Prompt  string                 `json:"prompt"`
+	System  string                 `json:"system,omitempty"`
+	Stream  bool                   `json:"stream"`
+	Options map[string]interface{} `json:"options,omitempty"`
 }
 
 // ollamaResponse represents the response from Ollama's generate API.

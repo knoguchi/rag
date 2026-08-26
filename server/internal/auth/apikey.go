@@ -216,6 +216,18 @@ func extractAPIKey(ctx context.Context) (string, error) {
 	return apiKey, nil
 }
 
+// ContextWithTenant returns a context carrying the given tenant info, as the
+// interceptor would produce. Intended for tests and in-process composition.
+func ContextWithTenant(ctx context.Context, tenant *TenantInfo) context.Context {
+	return context.WithValue(ctx, tenantContextKey, tenant)
+}
+
+// ContextWithAdmin returns a context marked as admin-authenticated, as the
+// interceptor would produce. Intended for tests and in-process composition.
+func ContextWithAdmin(ctx context.Context) context.Context {
+	return context.WithValue(ctx, adminContextKey, true)
+}
+
 // TenantFromContext extracts tenant info from context
 func TenantFromContext(ctx context.Context) (*TenantInfo, bool) {
 	tenant, ok := ctx.Value(tenantContextKey).(*TenantInfo)

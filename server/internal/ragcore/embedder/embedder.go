@@ -21,9 +21,9 @@ type Embedder interface {
 
 // ModelConfig holds configuration for a specific embedding model.
 type ModelConfig struct {
-	Dimension       int // Embedding dimension
-	ContextLength   int // Max tokens the model can process
-	MaxChunkWords   int // Recommended max chunk size in words (safe limit)
+	Dimension        int // Embedding dimension
+	ContextLength    int // Max tokens the model can process
+	MaxChunkWords    int // Recommended max chunk size in words (safe limit)
 	TargetChunkWords int // Recommended target chunk size in words
 }
 
@@ -33,13 +33,13 @@ var KnownModels = map[string]ModelConfig{
 	"nomic-embed-text": {
 		Dimension:        768,
 		ContextLength:    8192,
-		MaxChunkWords:    512,  // ~700 tokens, safe margin under 8192
+		MaxChunkWords:    512, // ~700 tokens, safe margin under 8192
 		TargetChunkWords: 256,
 	},
 	"mxbai-embed-large": {
 		Dimension:        1024,
 		ContextLength:    512,
-		MaxChunkWords:    300,  // Very limited context
+		MaxChunkWords:    300, // Very limited context
 		TargetChunkWords: 150,
 	},
 	"all-minilm": {

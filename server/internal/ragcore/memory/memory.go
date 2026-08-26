@@ -8,7 +8,7 @@ import (
 
 // Message represents a single message in a conversation.
 type Message struct {
-	Role      string    // "user" or "assistant"
+	Role      string // "user" or "assistant"
 	Content   string
 	Timestamp time.Time
 }

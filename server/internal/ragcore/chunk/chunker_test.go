@@ -3,7 +3,6 @@ package chunk
 import (
 	"strings"
 	"testing"
-
 )
 
 func TestNewChunker_Defaults(t *testing.T) {

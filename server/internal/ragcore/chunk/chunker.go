@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
-
 )
 
 // Chunk represents a piece of chunked content
