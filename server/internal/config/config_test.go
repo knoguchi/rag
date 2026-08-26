@@ -4,48 +4,20 @@ import (
 	"testing"
 )
 
-func TestValidate_DevelopmentAllowsDefaults(t *testing.T) {
+func TestValidate_DevelopmentAllowsMissingAdminKey(t *testing.T) {
 	cfg := &Config{
-		Environment:   "development",
-		JWTSecret:     "change-this-in-production",
-		SessionSecret: "change-this-in-production",
-		AdminAPIKey:   "",
+		Environment: "development",
+		AdminAPIKey: "",
 	}
 	if err := cfg.Validate(); err != nil {
 		t.Errorf("expected no error in development, got: %v", err)
 	}
 }
 
-func TestValidate_ProductionRejectsDefaultJWTSecret(t *testing.T) {
-	cfg := &Config{
-		Environment:   "production",
-		JWTSecret:     "change-this-in-production",
-		SessionSecret: "a-very-long-session-secret-that-is-at-least-32-chars",
-		AdminAPIKey:   "some-admin-key",
-	}
-	if err := cfg.Validate(); err == nil {
-		t.Error("expected error for default JWT secret in production")
-	}
-}
-
-func TestValidate_ProductionRejectsShortJWTSecret(t *testing.T) {
-	cfg := &Config{
-		Environment:   "production",
-		JWTSecret:     "too-short",
-		SessionSecret: "a-very-long-session-secret-that-is-at-least-32-chars",
-		AdminAPIKey:   "some-admin-key",
-	}
-	if err := cfg.Validate(); err == nil {
-		t.Error("expected error for short JWT secret in production")
-	}
-}
-
 func TestValidate_ProductionRejectsEmptyAdminAPIKey(t *testing.T) {
 	cfg := &Config{
-		Environment:   "production",
-		JWTSecret:     "a-very-long-jwt-secret-that-is-at-least-32-characters",
-		SessionSecret: "a-very-long-session-secret-that-is-at-least-32-chars",
-		AdminAPIKey:   "",
+		Environment: "production",
+		AdminAPIKey: "",
 	}
 	if err := cfg.Validate(); err == nil {
 		t.Error("expected error for empty admin API key in production")
@@ -54,14 +26,22 @@ func TestValidate_ProductionRejectsEmptyAdminAPIKey(t *testing.T) {
 
 func TestValidate_ProductionAcceptsValidConfig(t *testing.T) {
 	cfg := &Config{
-		Environment:   "production",
-		JWTSecret:     "a-very-long-jwt-secret-that-is-at-least-32-characters",
-		SessionSecret: "a-very-long-session-secret-that-is-at-least-32-chars",
-		AdminAPIKey:   "some-admin-key",
+		Environment:        "production",
+		AdminAPIKey:        "some-admin-key",
 		CORSAllowedOrigins: []string{"https://example.com"},
 	}
 	if err := cfg.Validate(); err != nil {
 		t.Errorf("expected no error for valid production config, got: %v", err)
+	}
+}
+
+func TestValidate_RejectsNegativeRateLimits(t *testing.T) {
+	cfg := &Config{
+		Environment:  "development",
+		RateLimitRPS: -1,
+	}
+	if err := cfg.Validate(); err == nil {
+		t.Error("expected error for negative rate limit")
 	}
 }
 

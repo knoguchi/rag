@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
-	"time"
 
 	"github.com/caarlos0/env/v10"
 	"github.com/joho/godotenv"
@@ -32,11 +31,8 @@ type Config struct {
 	OllamaLLMModel       string `env:"OLLAMA_LLM_MODEL" envDefault:"llama3.2"`
 
 	// Auth
-	AdminAPIKey        string        `env:"ADMIN_API_KEY"`
-	JWTSecret          string        `env:"JWT_SECRET" envDefault:"change-this-in-production"`
-	JWTExpiry          time.Duration `env:"JWT_EXPIRY" envDefault:"24h"`
-	SessionSecret      string        `env:"SESSION_SECRET" envDefault:"change-this-in-production"`
-	CORSAllowedOrigins []string      `env:"CORS_ALLOWED_ORIGINS" envSeparator:"," envDefault:"*"`
+	AdminAPIKey        string   `env:"ADMIN_API_KEY"`
+	CORSAllowedOrigins []string `env:"CORS_ALLOWED_ORIGINS" envSeparator:"," envDefault:"*"`
 
 	// Rate Limiting
 	RateLimitRPS   float64 `env:"RATE_LIMIT_RPS" envDefault:"10"`
@@ -56,28 +52,34 @@ func (c *Config) IsDevelopment() bool {
 	return c.Environment == "development"
 }
 
-// Validate checks configuration for production readiness.
-// In non-development environments, insecure defaults are rejected.
+// Validate checks the configuration. Cheap sanity checks run in every
+// environment; insecure settings are hard errors outside development and
+// loud warnings inside it.
 func (c *Config) Validate() error {
+	if c.RateLimitRPS < 0 || c.RateLimitBurst < 0 {
+		return fmt.Errorf("rate limit values cannot be negative")
+	}
+
+	wildcardCORS := false
+	for _, origin := range c.CORSAllowedOrigins {
+		if strings.TrimSpace(origin) == "*" {
+			wildcardCORS = true
+			break
+		}
+	}
+
 	if c.IsDevelopment() {
+		if c.AdminAPIKey == "" {
+			slog.Warn("ADMIN_API_KEY is not set; tenant management endpoints will reject all requests")
+		}
 		return nil
 	}
 
-	if c.JWTSecret == "change-this-in-production" || len(c.JWTSecret) < 32 {
-		return fmt.Errorf("JWT_SECRET must be set to a secure value (>=32 chars) in %s environment", c.Environment)
-	}
-	if c.SessionSecret == "change-this-in-production" || len(c.SessionSecret) < 32 {
-		return fmt.Errorf("SESSION_SECRET must be set to a secure value (>=32 chars) in %s environment", c.Environment)
-	}
 	if c.AdminAPIKey == "" {
 		return fmt.Errorf("ADMIN_API_KEY must be set in %s environment", c.Environment)
 	}
-
-	for _, origin := range c.CORSAllowedOrigins {
-		if strings.TrimSpace(origin) == "*" {
-			slog.Warn("CORS_ALLOWED_ORIGINS contains wildcard '*' in non-development environment")
-			break
-		}
+	if wildcardCORS {
+		slog.Warn("CORS_ALLOWED_ORIGINS contains wildcard '*' in non-development environment")
 	}
 
 	return nil

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	ragv1 "github.com/knoguchi/rag/gen/rag/v1"
+	"github.com/knoguchi/rag/internal/auth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -21,14 +23,14 @@ import (
 
 // HTTPServer wraps an HTTP server with grpc-gateway integration
 type HTTPServer struct {
-	server     *http.Server
-	router     *chi.Mux
-	gwMux      *runtime.ServeMux
-	logger     *slog.Logger
-	port       int
-	grpcAddr   string
-	grpcConn   *grpc.ClientConn
-	dbChecker  HealthChecker
+	server    *http.Server
+	router    *chi.Mux
+	gwMux     *runtime.ServeMux
+	logger    *slog.Logger
+	port      int
+	grpcAddr  string
+	grpcConn  *grpc.ClientConn
+	dbChecker HealthChecker
 }
 
 // HealthChecker can report whether a dependency is healthy.
@@ -41,10 +43,10 @@ type HTTPServerConfig struct {
 	Port           int
 	GRPCAddr       string // Address of the gRPC server (e.g., "localhost:9090")
 	Logger         *slog.Logger
-	AllowedOrigins []string        // CORS allowed origins
-	DBChecker      HealthChecker   // Database health checker (optional)
-	RateLimitRPS   float64         // Requests per second per IP (0 = disabled)
-	RateLimitBurst int             // Burst capacity per IP
+	AllowedOrigins []string      // CORS allowed origins
+	DBChecker      HealthChecker // Database health checker (optional)
+	RateLimitRPS   float64       // Requests per second per IP (0 = disabled)
+	RateLimitBurst int           // Burst capacity per IP
 }
 
 // NewHTTPServer creates a new HTTP server with grpc-gateway
@@ -67,7 +69,9 @@ func NewHTTPServer(cfg HTTPServerConfig) (*HTTPServer, error) {
 	router.Use(middleware.Recoverer)
 	router.Use(corsMiddleware(cfg.AllowedOrigins))
 
-	// Create grpc-gateway mux with JSON marshaler options
+	// Create grpc-gateway mux with JSON marshaler options.
+	// The header matcher forwards X-API-Key into gRPC metadata — without it
+	// the gateway drops the header and REST requests can never authenticate.
 	gwMux := runtime.NewServeMux(
 		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.JSONPb{
 			MarshalOptions: protojson.MarshalOptions{
@@ -78,6 +82,7 @@ func NewHTTPServer(cfg HTTPServerConfig) (*HTTPServer, error) {
 				DiscardUnknown: true,
 			},
 		}),
+		runtime.WithIncomingHeaderMatcher(apiKeyHeaderMatcher),
 	)
 
 	// Mount health check endpoint
@@ -198,34 +203,57 @@ func requestLoggingMiddleware(logger *slog.Logger) func(http.Handler) http.Handl
 	}
 }
 
-// corsMiddleware handles CORS headers
+// apiKeyHeaderMatcher forwards the API key header into gRPC metadata so the
+// auth interceptor sees it; everything else follows the gateway default.
+func apiKeyHeaderMatcher(key string) (string, bool) {
+	if strings.EqualFold(key, "X-API-Key") {
+		return auth.APIKeyHeader, true
+	}
+	return runtime.DefaultHeaderMatcher(key)
+}
+
+// corsMiddleware handles CORS headers.
+//
+// A wildcard configuration answers with a literal "*" and no credentials
+// header (the credentialed-wildcard combination is what browsers forbid and
+// what made the old version reflect arbitrary origins). Otherwise the
+// request origin must exactly match a configured origin; unmatched origins
+// get no CORS headers at all.
 func corsMiddleware(allowedOrigins []string) func(http.Handler) http.Handler {
+	wildcard := len(allowedOrigins) == 0
+	exact := make(map[string]bool, len(allowedOrigins))
+	for _, o := range allowedOrigins {
+		if o == "*" {
+			wildcard = true
+			continue
+		}
+		exact[o] = true
+	}
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			origin := r.Header.Get("Origin")
 
-			// Check if origin is allowed
-			allowed := false
-			if len(allowedOrigins) == 0 {
-				// If no origins specified, allow all in development
-				allowed = true
-				origin = "*"
-			} else {
-				for _, o := range allowedOrigins {
-					if o == "*" || o == origin {
-						allowed = true
-						break
-					}
+			switch {
+			case wildcard:
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+			case origin != "" && exact[origin]:
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
+				w.Header().Add("Vary", "Origin")
+			default:
+				// Unmatched origin: no CORS headers
+				if r.Method == http.MethodOptions {
+					w.WriteHeader(http.StatusNoContent)
+					return
 				}
+				next.ServeHTTP(w, r)
+				return
 			}
 
-			if allowed {
-				w.Header().Set("Access-Control-Allow-Origin", origin)
-				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-				w.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type, X-CSRF-Token, X-Request-ID, X-API-Key")
-				w.Header().Set("Access-Control-Allow-Credentials", "true")
-				w.Header().Set("Access-Control-Max-Age", "86400")
-			}
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type, X-CSRF-Token, X-Request-ID, X-API-Key")
+			w.Header().Set("Access-Control-Max-Age", "86400")
 
 			// Handle preflight requests
 			if r.Method == http.MethodOptions {
