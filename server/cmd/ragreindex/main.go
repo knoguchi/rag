@@ -19,8 +19,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/knoguchi/rag/internal/config"
+	"github.com/knoguchi/rag/internal/ids"
 	"github.com/knoguchi/rag/internal/ragcore"
 	"github.com/knoguchi/rag/internal/ragcore/embedder"
 	"github.com/knoguchi/rag/internal/ragcore/llm"
@@ -94,7 +94,7 @@ func run(tenantID string, all, contextual bool) error {
 		}
 		tenants = list
 	} else {
-		id, err := uuid.Parse(tenantID)
+		id, err := ids.Parse(tenantID)
 		if err != nil {
 			return fmt.Errorf("invalid tenant id: %w", err)
 		}

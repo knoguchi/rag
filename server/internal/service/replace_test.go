@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	ragv1 "github.com/knoguchi/rag/gen/rag/v1"
+	"github.com/knoguchi/rag/internal/ids"
 	"github.com/knoguchi/rag/internal/ragcore"
 	"github.com/knoguchi/rag/internal/ragcore/vectorstore"
 	"github.com/knoguchi/rag/internal/repository"
@@ -117,7 +118,7 @@ func TestIngest_ReplacesStaleDocumentForSameSource(t *testing.T) {
 	if len(docs) != 1 {
 		t.Fatalf("expected exactly 1 document for the source, got %d", len(docs))
 	}
-	if len(repo.deleted) != 1 || repo.deleted[0].String() != resp1.DocumentId {
+	if len(repo.deleted) != 1 || ids.Format(repo.deleted[0]) != resp1.DocumentId {
 		t.Errorf("expected the first document %s to be deleted, deleted=%v", resp1.DocumentId, repo.deleted)
 	}
 
@@ -130,7 +131,7 @@ func TestIngest_ReplacesStaleDocumentForSameSource(t *testing.T) {
 	if err != nil {
 		t.Fatalf("third ingest failed: %v", err)
 	}
-	if resp3.DocumentId != docs[0].ID.String() {
-		t.Errorf("expected dedup to return existing doc %s, got %s", docs[0].ID, resp3.DocumentId)
+	if resp3.DocumentId != ids.Format(docs[0].ID) {
+		t.Errorf("expected dedup to return existing doc %s, got %s", ids.Format(docs[0].ID), resp3.DocumentId)
 	}
 }

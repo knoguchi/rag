@@ -5,6 +5,7 @@ import (
 
 	ragv1 "github.com/knoguchi/rag/gen/rag/v1"
 	"github.com/knoguchi/rag/internal/auth"
+	"github.com/knoguchi/rag/internal/ids"
 	"github.com/knoguchi/rag/internal/ragcore"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -82,8 +83,8 @@ func buildOptions(tenant *auth.TenantInfo, opts *ragv1.QueryOptions, sessionID s
 
 func toProtoChunk(c ragcore.RetrievedChunk) *ragv1.RetrievedChunk {
 	return &ragv1.RetrievedChunk{
-		DocumentId: c.DocumentID,
-		ChunkId:    c.ID,
+		DocumentId: ids.FormatString(c.DocumentID),
+		ChunkId:    ids.FormatString(c.ID),
 		Content:    c.Content,
 		Score:      c.Score,
 		Source:     c.Source,
@@ -201,7 +202,15 @@ func (s *RAGService) Retrieve(ctx context.Context, req *ragv1.RetrieveRequest) (
 		if req.Options.MinScore > 0 {
 			options.MinScore = req.Options.MinScore
 		}
-		documentIDs = req.Options.DocumentIds
+		// Clients speak ULID; the vector store payloads hold UUID strings
+		documentIDs = make([]string, 0, len(req.Options.DocumentIds))
+		for _, d := range req.Options.DocumentIds {
+			if parsed, err := ids.Parse(d); err == nil {
+				documentIDs = append(documentIDs, parsed.String())
+			} else {
+				documentIDs = append(documentIDs, d)
+			}
+		}
 	}
 
 	result, err := s.engine.Retrieve(ctx, tenant.ID.String(), req.Query, options, documentIDs)

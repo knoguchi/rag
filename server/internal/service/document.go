@@ -17,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	ragv1 "github.com/knoguchi/rag/gen/rag/v1"
 	"github.com/knoguchi/rag/internal/auth"
+	"github.com/knoguchi/rag/internal/ids"
 	"github.com/knoguchi/rag/internal/ragcore"
 	"github.com/knoguchi/rag/internal/repository"
 	"google.golang.org/grpc/codes"
@@ -118,7 +119,7 @@ func (s *DocumentService) IngestDocument(ctx context.Context, req *ragv1.IngestD
 	if err == nil && existingDoc != nil {
 		slog.Info("duplicate document found", "doc_id", existingDoc.ID)
 		return &ragv1.IngestDocumentResponse{
-			DocumentId: existingDoc.ID.String(),
+			DocumentId: ids.Format(existingDoc.ID),
 			Status:     convertStatus(existingDoc.Status),
 		}, nil
 	}
@@ -148,7 +149,7 @@ func (s *DocumentService) IngestDocument(ctx context.Context, req *ragv1.IngestD
 
 	// Create document record
 	now := time.Now()
-	docID := uuid.New()
+	docID := ids.New()
 	doc := &repository.Document{
 		ID:          docID,
 		TenantID:    tenantID,
@@ -182,7 +183,7 @@ func (s *DocumentService) IngestDocument(ctx context.Context, req *ragv1.IngestD
 	}()
 
 	return &ragv1.IngestDocumentResponse{
-		DocumentId: docID.String(),
+		DocumentId: ids.Format(docID),
 		Status:     ragv1.DocumentStatus_DOCUMENT_STATUS_PROCESSING,
 	}, nil
 }
@@ -204,7 +205,7 @@ func (s *DocumentService) IngestURL(ctx context.Context, req *ragv1.IngestURLReq
 	// hash would collide on UNIQUE(tenant_id, content_hash) with concurrent
 	// or previously interrupted URL ingests.
 	now := time.Now()
-	docID := uuid.New()
+	docID := ids.New()
 	doc := &repository.Document{
 		ID:          docID,
 		TenantID:    tenantID,
@@ -230,7 +231,7 @@ func (s *DocumentService) IngestURL(ctx context.Context, req *ragv1.IngestURLReq
 	}()
 
 	return &ragv1.IngestDocumentResponse{
-		DocumentId: docID.String(),
+		DocumentId: ids.Format(docID),
 		Status:     ragv1.DocumentStatus_DOCUMENT_STATUS_PENDING,
 	}, nil
 }
@@ -241,7 +242,7 @@ func (s *DocumentService) GetDocument(ctx context.Context, req *ragv1.GetDocumen
 		return nil, status.Error(codes.InvalidArgument, "id is required")
 	}
 
-	id, err := uuid.Parse(req.Id)
+	id, err := ids.Parse(req.Id)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid document ID format")
 	}
@@ -319,7 +320,7 @@ func (s *DocumentService) DeleteDocument(ctx context.Context, req *ragv1.DeleteD
 		return nil, status.Error(codes.InvalidArgument, "id is required")
 	}
 
-	id, err := uuid.Parse(req.Id)
+	id, err := ids.Parse(req.Id)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid document ID format")
 	}
@@ -367,7 +368,7 @@ func (s *DocumentService) GetDocumentChunks(ctx context.Context, req *ragv1.GetD
 		return nil, status.Error(codes.InvalidArgument, "document_id is required")
 	}
 
-	docID, err := uuid.Parse(req.DocumentId)
+	docID, err := ids.Parse(req.DocumentId)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid document_id format")
 	}
@@ -608,8 +609,8 @@ func hashContent(content string) string {
 // documentToProto converts a repository Document to proto Document
 func (s *DocumentService) documentToProto(doc *repository.Document) *ragv1.Document {
 	return &ragv1.Document{
-		Id:           doc.ID.String(),
-		TenantId:     doc.TenantID.String(),
+		Id:           ids.Format(doc.ID),
+		TenantId:     ids.Format(doc.TenantID),
 		Source:       doc.Source,
 		Title:        doc.Title,
 		ContentHash:  doc.ContentHash,
@@ -625,8 +626,8 @@ func (s *DocumentService) documentToProto(doc *repository.Document) *ragv1.Docum
 // chunkToProto converts a repository DocumentChunk to proto DocumentChunk
 func (s *DocumentService) chunkToProto(chunk *repository.DocumentChunk) *ragv1.DocumentChunk {
 	return &ragv1.DocumentChunk{
-		Id:         chunk.ID.String(),
-		DocumentId: chunk.DocumentID.String(),
+		Id:         ids.Format(chunk.ID),
+		DocumentId: ids.Format(chunk.DocumentID),
 		ChunkIndex: int32(chunk.ChunkIndex),
 		Content:    chunk.Content,
 		Metadata:   chunk.Metadata,

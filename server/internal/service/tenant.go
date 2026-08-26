@@ -15,6 +15,7 @@ import (
 	ragv1 "github.com/knoguchi/rag/gen/rag/v1"
 	"github.com/knoguchi/rag/internal/auth"
 	"github.com/knoguchi/rag/internal/config"
+	"github.com/knoguchi/rag/internal/ids"
 	"github.com/knoguchi/rag/internal/ragcore"
 	"github.com/knoguchi/rag/internal/ragcore/embedder"
 	"github.com/knoguchi/rag/internal/repository"
@@ -68,12 +69,12 @@ func (s *TenantService) CreateTenant(ctx context.Context, req *ragv1.CreateTenan
 	var tenantID uuid.UUID
 	if req.GetId() != "" {
 		var err error
-		tenantID, err = uuid.Parse(req.GetId())
+		tenantID, err = ids.Parse(req.GetId())
 		if err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "invalid tenant ID format: %v", err)
 		}
 	} else {
-		tenantID = uuid.New()
+		tenantID = ids.New()
 	}
 
 	now := time.Now()
@@ -108,7 +109,7 @@ func (s *TenantService) GetTenant(ctx context.Context, req *ragv1.GetTenantReque
 		return nil, status.Error(codes.InvalidArgument, "id is required")
 	}
 
-	id, err := uuid.Parse(req.Id)
+	id, err := ids.Parse(req.Id)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid tenant ID format")
 	}
@@ -173,7 +174,7 @@ func (s *TenantService) UpdateTenant(ctx context.Context, req *ragv1.UpdateTenan
 		return nil, status.Error(codes.InvalidArgument, "id is required")
 	}
 
-	id, err := uuid.Parse(req.Id)
+	id, err := ids.Parse(req.Id)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid tenant ID format")
 	}
@@ -219,7 +220,7 @@ func (s *TenantService) DeleteTenant(ctx context.Context, req *ragv1.DeleteTenan
 		return nil, status.Error(codes.InvalidArgument, "id is required")
 	}
 
-	id, err := uuid.Parse(req.Id)
+	id, err := ids.Parse(req.Id)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid tenant ID format")
 	}
@@ -244,7 +245,7 @@ func (s *TenantService) RegenerateAPIKey(ctx context.Context, req *ragv1.Regener
 		return nil, status.Error(codes.InvalidArgument, "id is required")
 	}
 
-	id, err := uuid.Parse(req.Id)
+	id, err := ids.Parse(req.Id)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid tenant ID format")
 	}
@@ -533,7 +534,7 @@ func (s *TenantService) validateTenantConfig(config repository.TenantConfig) err
 // tenantToProto converts a repository Tenant to proto Tenant
 func (s *TenantService) tenantToProto(t *repository.Tenant) *ragv1.Tenant {
 	return &ragv1.Tenant{
-		Id:        t.ID.String(),
+		Id:        ids.Format(t.ID),
 		Name:      t.Name,
 		KeyPrefix: t.KeyPrefix,
 		Config: &ragv1.TenantConfig{
