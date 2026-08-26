@@ -66,7 +66,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v1Tenant"
+              "$ref": "#/definitions/v1CreateTenantResponse"
             }
           },
           "default": {
@@ -299,6 +299,18 @@
         }
       }
     },
+    "v1CreateTenantResponse": {
+      "type": "object",
+      "properties": {
+        "tenant": {
+          "$ref": "#/definitions/v1Tenant"
+        },
+        "apiKey": {
+          "type": "string",
+          "description": "The tenant's API key. Shown only here and on key regeneration — store\nit securely, it cannot be retrieved again."
+        }
+      }
+    },
     "v1DeleteTenantResponse": {
       "type": "object",
       "properties": {
@@ -339,8 +351,9 @@
         "name": {
           "type": "string"
         },
-        "apiKey": {
-          "type": "string"
+        "keyPrefix": {
+          "type": "string",
+          "title": "First characters of the API key, for display/identification"
         },
         "config": {
           "$ref": "#/definitions/v1TenantConfig"

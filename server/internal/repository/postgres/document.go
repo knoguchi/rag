@@ -42,14 +42,14 @@ func (r *DocumentRepo) Create(ctx context.Context, doc *repository.Document) err
 	return nil
 }
 
-// GetByID retrieves a document by ID
-func (r *DocumentRepo) GetByID(ctx context.Context, id uuid.UUID) (*repository.Document, error) {
+// GetByID retrieves a document by ID, scoped to a tenant
+func (r *DocumentRepo) GetByID(ctx context.Context, tenantID, id uuid.UUID) (*repository.Document, error) {
 	query := `
 		SELECT id, tenant_id, source, title, content_hash, chunk_count, status, error_message, metadata, created_at, updated_at
 		FROM documents
-		WHERE id = $1
+		WHERE tenant_id = $1 AND id = $2
 	`
-	return r.scanDocument(ctx, query, id)
+	return r.scanDocument(ctx, query, tenantID, id)
 }
 
 // GetByHash retrieves a document by content hash for a tenant
@@ -164,14 +164,14 @@ func (r *DocumentRepo) Update(ctx context.Context, doc *repository.Document) err
 	return nil
 }
 
-// Delete deletes a document
-func (r *DocumentRepo) Delete(ctx context.Context, id uuid.UUID) error {
-	result, err := r.db.Pool.Exec(ctx, `DELETE FROM documents WHERE id = $1`, id)
+// Delete deletes a document, scoped to a tenant
+func (r *DocumentRepo) Delete(ctx context.Context, tenantID, id uuid.UUID) error {
+	result, err := r.db.Pool.Exec(ctx, `DELETE FROM documents WHERE tenant_id = $1 AND id = $2`, tenantID, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete document: %w", err)
 	}
 	if result.RowsAffected() == 0 {
-		return fmt.Errorf("document not found")
+		return repository.ErrNotFound
 	}
 	return nil
 }
@@ -189,9 +189,9 @@ func (r *DocumentRepo) CreateChunks(ctx context.Context, chunks []*repository.Do
 			return fmt.Errorf("failed to marshal chunk metadata: %w", err)
 		}
 		batch.Queue(`
-			INSERT INTO document_chunks (id, document_id, chunk_index, content, metadata, created_at)
-			VALUES ($1, $2, $3, $4, $5, $6)
-		`, chunk.ID, chunk.DocumentID, chunk.ChunkIndex, chunk.Content, metadataJSON, chunk.CreatedAt)
+			INSERT INTO document_chunks (id, document_id, tenant_id, chunk_index, content, metadata, created_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)
+		`, chunk.ID, chunk.DocumentID, chunk.TenantID, chunk.ChunkIndex, chunk.Content, metadataJSON, chunk.CreatedAt)
 	}
 
 	results := r.db.Pool.SendBatch(ctx, batch)
@@ -206,16 +206,16 @@ func (r *DocumentRepo) CreateChunks(ctx context.Context, chunks []*repository.Do
 	return nil
 }
 
-// GetChunks retrieves chunks for a document
-func (r *DocumentRepo) GetChunks(ctx context.Context, documentID uuid.UUID, limit, offset int) ([]*repository.DocumentChunk, error) {
+// GetChunks retrieves chunks for a document, scoped to a tenant
+func (r *DocumentRepo) GetChunks(ctx context.Context, tenantID, documentID uuid.UUID, limit, offset int) ([]*repository.DocumentChunk, error) {
 	query := `
 		SELECT id, document_id, chunk_index, content, metadata, created_at
 		FROM document_chunks
-		WHERE document_id = $1
+		WHERE tenant_id = $1 AND document_id = $2
 		ORDER BY chunk_index
-		LIMIT $2 OFFSET $3
+		LIMIT $3 OFFSET $4
 	`
-	rows, err := r.db.Pool.Query(ctx, query, documentID, limit, offset)
+	rows, err := r.db.Pool.Query(ctx, query, tenantID, documentID, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get chunks: %w", err)
 	}
@@ -239,9 +239,9 @@ func (r *DocumentRepo) GetChunks(ctx context.Context, documentID uuid.UUID, limi
 	return chunks, nil
 }
 
-// DeleteChunks deletes all chunks for a document
-func (r *DocumentRepo) DeleteChunks(ctx context.Context, documentID uuid.UUID) error {
-	_, err := r.db.Pool.Exec(ctx, `DELETE FROM document_chunks WHERE document_id = $1`, documentID)
+// DeleteChunks deletes all chunks for a document, scoped to a tenant
+func (r *DocumentRepo) DeleteChunks(ctx context.Context, tenantID, documentID uuid.UUID) error {
+	_, err := r.db.Pool.Exec(ctx, `DELETE FROM document_chunks WHERE tenant_id = $1 AND document_id = $2`, tenantID, documentID)
 	if err != nil {
 		return fmt.Errorf("failed to delete chunks: %w", err)
 	}

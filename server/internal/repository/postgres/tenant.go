@@ -2,6 +2,8 @@ package postgres
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,19 +23,34 @@ func NewTenantRepo(db *DB) *TenantRepo {
 	return &TenantRepo{db: db}
 }
 
-// Create creates a new tenant
-func (r *TenantRepo) Create(ctx context.Context, tenant *repository.Tenant) error {
+// hashAPIKey returns the hex SHA-256 of a plaintext API key.
+func hashAPIKey(key string) string {
+	sum := sha256.Sum256([]byte(key))
+	return hex.EncodeToString(sum[:])
+}
+
+// keyPrefix returns the display prefix stored alongside the hash.
+func keyPrefix(key string) string {
+	if len(key) > 12 {
+		return key[:12]
+	}
+	return key
+}
+
+// Create creates a new tenant, storing only the hash of the API key
+func (r *TenantRepo) Create(ctx context.Context, tenant *repository.Tenant, apiKey string) error {
 	configJSON, err := json.Marshal(tenant.Config)
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 
+	tenant.KeyPrefix = keyPrefix(apiKey)
 	query := `
-		INSERT INTO tenants (id, name, api_key, config, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO tenants (id, name, api_key_hash, key_prefix, config, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`
 	_, err = r.db.Pool.Exec(ctx, query,
-		tenant.ID, tenant.Name, tenant.APIKey, configJSON, tenant.CreatedAt, tenant.UpdatedAt)
+		tenant.ID, tenant.Name, hashAPIKey(apiKey), tenant.KeyPrefix, configJSON, tenant.CreatedAt, tenant.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to create tenant: %w", err)
 	}
@@ -43,21 +60,21 @@ func (r *TenantRepo) Create(ctx context.Context, tenant *repository.Tenant) erro
 // GetByID retrieves a tenant by ID
 func (r *TenantRepo) GetByID(ctx context.Context, id uuid.UUID) (*repository.Tenant, error) {
 	query := `
-		SELECT id, name, api_key, config, created_at, updated_at
+		SELECT id, name, key_prefix, config, created_at, updated_at
 		FROM tenants
 		WHERE id = $1
 	`
 	return r.scanTenant(ctx, query, id)
 }
 
-// GetByAPIKey retrieves a tenant by API key
+// GetByAPIKey retrieves a tenant by plaintext API key (hashed for lookup)
 func (r *TenantRepo) GetByAPIKey(ctx context.Context, apiKey string) (*repository.Tenant, error) {
 	query := `
-		SELECT id, name, api_key, config, created_at, updated_at
+		SELECT id, name, key_prefix, config, created_at, updated_at
 		FROM tenants
-		WHERE api_key = $1
+		WHERE api_key_hash = $1
 	`
-	return r.scanTenant(ctx, query, apiKey)
+	return r.scanTenant(ctx, query, hashAPIKey(apiKey))
 }
 
 func (r *TenantRepo) scanTenant(ctx context.Context, query string, args ...any) (*repository.Tenant, error) {
@@ -65,7 +82,7 @@ func (r *TenantRepo) scanTenant(ctx context.Context, query string, args ...any) 
 	var configJSON []byte
 
 	err := r.db.Pool.QueryRow(ctx, query, args...).Scan(
-		&tenant.ID, &tenant.Name, &tenant.APIKey, &configJSON,
+		&tenant.ID, &tenant.Name, &tenant.KeyPrefix, &configJSON,
 		&tenant.CreatedAt, &tenant.UpdatedAt,
 	)
 	if err != nil {
@@ -121,7 +138,7 @@ func (r *TenantRepo) List(ctx context.Context, limit, offset int) ([]*repository
 	}
 
 	query := `
-		SELECT id, name, api_key, config, created_at, updated_at
+		SELECT id, name, key_prefix, config, created_at, updated_at
 		FROM tenants
 		ORDER BY created_at DESC
 		LIMIT $1 OFFSET $2
@@ -136,7 +153,7 @@ func (r *TenantRepo) List(ctx context.Context, limit, offset int) ([]*repository
 	for rows.Next() {
 		var tenant repository.Tenant
 		var configJSON []byte
-		if err := rows.Scan(&tenant.ID, &tenant.Name, &tenant.APIKey, &configJSON,
+		if err := rows.Scan(&tenant.ID, &tenant.Name, &tenant.KeyPrefix, &configJSON,
 			&tenant.CreatedAt, &tenant.UpdatedAt); err != nil {
 			return nil, 0, fmt.Errorf("failed to scan tenant: %w", err)
 		}
@@ -183,11 +200,11 @@ func (r *TenantRepo) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-// UpdateAPIKey updates a tenant's API key
+// UpdateAPIKey updates a tenant's API key (stored hashed)
 func (r *TenantRepo) UpdateAPIKey(ctx context.Context, id uuid.UUID, newAPIKey string) error {
 	result, err := r.db.Pool.Exec(ctx,
-		`UPDATE tenants SET api_key = $2, updated_at = NOW() WHERE id = $1`,
-		id, newAPIKey)
+		`UPDATE tenants SET api_key_hash = $2, key_prefix = $3, updated_at = NOW() WHERE id = $1`,
+		id, hashAPIKey(newAPIKey), keyPrefix(newAPIKey))
 	if err != nil {
 		return fmt.Errorf("failed to update API key: %w", err)
 	}

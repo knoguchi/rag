@@ -25,10 +25,11 @@ const (
 )
 
 type Tenant struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	ApiKey        string                 `protobuf:"bytes,3,opt,name=api_key,json=apiKey,proto3" json:"api_key,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name  string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// First characters of the API key, for display/identification
+	KeyPrefix     string                 `protobuf:"bytes,8,opt,name=key_prefix,json=keyPrefix,proto3" json:"key_prefix,omitempty"`
 	Config        *TenantConfig          `protobuf:"bytes,4,opt,name=config,proto3" json:"config,omitempty"`
 	Usage         *TenantUsage           `protobuf:"bytes,5,opt,name=usage,proto3" json:"usage,omitempty"`
 	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
@@ -81,9 +82,9 @@ func (x *Tenant) GetName() string {
 	return ""
 }
 
-func (x *Tenant) GetApiKey() string {
+func (x *Tenant) GetKeyPrefix() string {
 	if x != nil {
-		return x.ApiKey
+		return x.KeyPrefix
 	}
 	return ""
 }
@@ -432,6 +433,60 @@ func (x *CreateTenantRequest) GetId() string {
 	return ""
 }
 
+type CreateTenantResponse struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *Tenant                `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// The tenant's API key. Shown only here and on key regeneration — store
+	// it securely, it cannot be retrieved again.
+	ApiKey        string `protobuf:"bytes,2,opt,name=api_key,json=apiKey,proto3" json:"api_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateTenantResponse) Reset() {
+	*x = CreateTenantResponse{}
+	mi := &file_rag_v1_tenant_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateTenantResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateTenantResponse) ProtoMessage() {}
+
+func (x *CreateTenantResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_rag_v1_tenant_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateTenantResponse.ProtoReflect.Descriptor instead.
+func (*CreateTenantResponse) Descriptor() ([]byte, []int) {
+	return file_rag_v1_tenant_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *CreateTenantResponse) GetTenant() *Tenant {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *CreateTenantResponse) GetApiKey() string {
+	if x != nil {
+		return x.ApiKey
+	}
+	return ""
+}
+
 type GetTenantRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -441,7 +496,7 @@ type GetTenantRequest struct {
 
 func (x *GetTenantRequest) Reset() {
 	*x = GetTenantRequest{}
-	mi := &file_rag_v1_tenant_proto_msgTypes[5]
+	mi := &file_rag_v1_tenant_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -453,7 +508,7 @@ func (x *GetTenantRequest) String() string {
 func (*GetTenantRequest) ProtoMessage() {}
 
 func (x *GetTenantRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_rag_v1_tenant_proto_msgTypes[5]
+	mi := &file_rag_v1_tenant_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -466,7 +521,7 @@ func (x *GetTenantRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTenantRequest.ProtoReflect.Descriptor instead.
 func (*GetTenantRequest) Descriptor() ([]byte, []int) {
-	return file_rag_v1_tenant_proto_rawDescGZIP(), []int{5}
+	return file_rag_v1_tenant_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetTenantRequest) GetId() string {
@@ -486,7 +541,7 @@ type ListTenantsRequest struct {
 
 func (x *ListTenantsRequest) Reset() {
 	*x = ListTenantsRequest{}
-	mi := &file_rag_v1_tenant_proto_msgTypes[6]
+	mi := &file_rag_v1_tenant_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -498,7 +553,7 @@ func (x *ListTenantsRequest) String() string {
 func (*ListTenantsRequest) ProtoMessage() {}
 
 func (x *ListTenantsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_rag_v1_tenant_proto_msgTypes[6]
+	mi := &file_rag_v1_tenant_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -511,7 +566,7 @@ func (x *ListTenantsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTenantsRequest.ProtoReflect.Descriptor instead.
 func (*ListTenantsRequest) Descriptor() ([]byte, []int) {
-	return file_rag_v1_tenant_proto_rawDescGZIP(), []int{6}
+	return file_rag_v1_tenant_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ListTenantsRequest) GetPageSize() int32 {
@@ -538,7 +593,7 @@ type ListTenantsResponse struct {
 
 func (x *ListTenantsResponse) Reset() {
 	*x = ListTenantsResponse{}
-	mi := &file_rag_v1_tenant_proto_msgTypes[7]
+	mi := &file_rag_v1_tenant_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -550,7 +605,7 @@ func (x *ListTenantsResponse) String() string {
 func (*ListTenantsResponse) ProtoMessage() {}
 
 func (x *ListTenantsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_rag_v1_tenant_proto_msgTypes[7]
+	mi := &file_rag_v1_tenant_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -563,7 +618,7 @@ func (x *ListTenantsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTenantsResponse.ProtoReflect.Descriptor instead.
 func (*ListTenantsResponse) Descriptor() ([]byte, []int) {
-	return file_rag_v1_tenant_proto_rawDescGZIP(), []int{7}
+	return file_rag_v1_tenant_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ListTenantsResponse) GetTenants() []*Tenant {
@@ -591,7 +646,7 @@ type UpdateTenantRequest struct {
 
 func (x *UpdateTenantRequest) Reset() {
 	*x = UpdateTenantRequest{}
-	mi := &file_rag_v1_tenant_proto_msgTypes[8]
+	mi := &file_rag_v1_tenant_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -603,7 +658,7 @@ func (x *UpdateTenantRequest) String() string {
 func (*UpdateTenantRequest) ProtoMessage() {}
 
 func (x *UpdateTenantRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_rag_v1_tenant_proto_msgTypes[8]
+	mi := &file_rag_v1_tenant_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -616,7 +671,7 @@ func (x *UpdateTenantRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateTenantRequest.ProtoReflect.Descriptor instead.
 func (*UpdateTenantRequest) Descriptor() ([]byte, []int) {
-	return file_rag_v1_tenant_proto_rawDescGZIP(), []int{8}
+	return file_rag_v1_tenant_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *UpdateTenantRequest) GetId() string {
@@ -649,7 +704,7 @@ type DeleteTenantRequest struct {
 
 func (x *DeleteTenantRequest) Reset() {
 	*x = DeleteTenantRequest{}
-	mi := &file_rag_v1_tenant_proto_msgTypes[9]
+	mi := &file_rag_v1_tenant_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -661,7 +716,7 @@ func (x *DeleteTenantRequest) String() string {
 func (*DeleteTenantRequest) ProtoMessage() {}
 
 func (x *DeleteTenantRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_rag_v1_tenant_proto_msgTypes[9]
+	mi := &file_rag_v1_tenant_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -674,7 +729,7 @@ func (x *DeleteTenantRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteTenantRequest.ProtoReflect.Descriptor instead.
 func (*DeleteTenantRequest) Descriptor() ([]byte, []int) {
-	return file_rag_v1_tenant_proto_rawDescGZIP(), []int{9}
+	return file_rag_v1_tenant_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *DeleteTenantRequest) GetId() string {
@@ -693,7 +748,7 @@ type DeleteTenantResponse struct {
 
 func (x *DeleteTenantResponse) Reset() {
 	*x = DeleteTenantResponse{}
-	mi := &file_rag_v1_tenant_proto_msgTypes[10]
+	mi := &file_rag_v1_tenant_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -705,7 +760,7 @@ func (x *DeleteTenantResponse) String() string {
 func (*DeleteTenantResponse) ProtoMessage() {}
 
 func (x *DeleteTenantResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_rag_v1_tenant_proto_msgTypes[10]
+	mi := &file_rag_v1_tenant_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -718,7 +773,7 @@ func (x *DeleteTenantResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteTenantResponse.ProtoReflect.Descriptor instead.
 func (*DeleteTenantResponse) Descriptor() ([]byte, []int) {
-	return file_rag_v1_tenant_proto_rawDescGZIP(), []int{10}
+	return file_rag_v1_tenant_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *DeleteTenantResponse) GetSuccess() bool {
@@ -737,7 +792,7 @@ type RegenerateAPIKeyRequest struct {
 
 func (x *RegenerateAPIKeyRequest) Reset() {
 	*x = RegenerateAPIKeyRequest{}
-	mi := &file_rag_v1_tenant_proto_msgTypes[11]
+	mi := &file_rag_v1_tenant_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -749,7 +804,7 @@ func (x *RegenerateAPIKeyRequest) String() string {
 func (*RegenerateAPIKeyRequest) ProtoMessage() {}
 
 func (x *RegenerateAPIKeyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_rag_v1_tenant_proto_msgTypes[11]
+	mi := &file_rag_v1_tenant_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -762,7 +817,7 @@ func (x *RegenerateAPIKeyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegenerateAPIKeyRequest.ProtoReflect.Descriptor instead.
 func (*RegenerateAPIKeyRequest) Descriptor() ([]byte, []int) {
-	return file_rag_v1_tenant_proto_rawDescGZIP(), []int{11}
+	return file_rag_v1_tenant_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *RegenerateAPIKeyRequest) GetId() string {
@@ -781,7 +836,7 @@ type RegenerateAPIKeyResponse struct {
 
 func (x *RegenerateAPIKeyResponse) Reset() {
 	*x = RegenerateAPIKeyResponse{}
-	mi := &file_rag_v1_tenant_proto_msgTypes[12]
+	mi := &file_rag_v1_tenant_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -793,7 +848,7 @@ func (x *RegenerateAPIKeyResponse) String() string {
 func (*RegenerateAPIKeyResponse) ProtoMessage() {}
 
 func (x *RegenerateAPIKeyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_rag_v1_tenant_proto_msgTypes[12]
+	mi := &file_rag_v1_tenant_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -806,7 +861,7 @@ func (x *RegenerateAPIKeyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegenerateAPIKeyResponse.ProtoReflect.Descriptor instead.
 func (*RegenerateAPIKeyResponse) Descriptor() ([]byte, []int) {
-	return file_rag_v1_tenant_proto_rawDescGZIP(), []int{12}
+	return file_rag_v1_tenant_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *RegenerateAPIKeyResponse) GetApiKey() string {
@@ -820,17 +875,18 @@ var File_rag_v1_tenant_proto protoreflect.FileDescriptor
 
 const file_rag_v1_tenant_proto_rawDesc = "" +
 	"\n" +
-	"\x13rag/v1/tenant.proto\x12\x06rag.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a.protoc-gen-openapiv2/options/annotations.proto\"\x94\x02\n" +
+	"\x13rag/v1/tenant.proto\x12\x06rag.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a.protoc-gen-openapiv2/options/annotations.proto\"\xa9\x02\n" +
 	"\x06Tenant\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
-	"\aapi_key\x18\x03 \x01(\tR\x06apiKey\x12,\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1d\n" +
+	"\n" +
+	"key_prefix\x18\b \x01(\tR\tkeyPrefix\x12,\n" +
 	"\x06config\x18\x04 \x01(\v2\x14.rag.v1.TenantConfigR\x06config\x12)\n" +
 	"\x05usage\x18\x05 \x01(\v2\x13.rag.v1.TenantUsageR\x05usage\x129\n" +
 	"\n" +
 	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xc8\x03\n" +
+	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAtJ\x04\b\x03\x10\x04R\aapi_key\"\xc8\x03\n" +
 	"\fTenantConfig\x12'\n" +
 	"\x0fembedding_model\x18\x01 \x01(\tR\x0eembeddingModel\x12\x1b\n" +
 	"\tllm_model\x18\x02 \x01(\tR\bllmModel\x12/\n" +
@@ -858,7 +914,10 @@ const file_rag_v1_tenant_proto_rawDesc = "" +
 	"\x13CreateTenantRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12,\n" +
 	"\x06config\x18\x02 \x01(\v2\x14.rag.v1.TenantConfigR\x06config\x12\x0e\n" +
-	"\x02id\x18\x03 \x01(\tR\x02id\"\"\n" +
+	"\x02id\x18\x03 \x01(\tR\x02id\"W\n" +
+	"\x14CreateTenantResponse\x12&\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x0e.rag.v1.TenantR\x06tenant\x12\x17\n" +
+	"\aapi_key\x18\x02 \x01(\tR\x06apiKey\"\"\n" +
 	"\x10GetTenantRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"P\n" +
 	"\x12ListTenantsRequest\x12\x1b\n" +
@@ -879,9 +938,9 @@ const file_rag_v1_tenant_proto_rawDesc = "" +
 	"\x17RegenerateAPIKeyRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"3\n" +
 	"\x18RegenerateAPIKeyResponse\x12\x17\n" +
-	"\aapi_key\x18\x01 \x01(\tR\x06apiKey2\xd1\x04\n" +
-	"\rTenantService\x12S\n" +
-	"\fCreateTenant\x12\x1b.rag.v1.CreateTenantRequest\x1a\x0e.rag.v1.Tenant\"\x16\x82\xd3\xe4\x93\x02\x10:\x01*\"\v/v1/tenants\x12O\n" +
+	"\aapi_key\x18\x01 \x01(\tR\x06apiKey2\xdf\x04\n" +
+	"\rTenantService\x12a\n" +
+	"\fCreateTenant\x12\x1b.rag.v1.CreateTenantRequest\x1a\x1c.rag.v1.CreateTenantResponse\"\x16\x82\xd3\xe4\x93\x02\x10:\x01*\"\v/v1/tenants\x12O\n" +
 	"\tGetTenant\x12\x18.rag.v1.GetTenantRequest\x1a\x0e.rag.v1.Tenant\"\x18\x82\xd3\xe4\x93\x02\x12\x12\x10/v1/tenants/{id}\x12[\n" +
 	"\vListTenants\x12\x1a.rag.v1.ListTenantsRequest\x1a\x1b.rag.v1.ListTenantsResponse\"\x13\x82\xd3\xe4\x93\x02\r\x12\v/v1/tenants\x12X\n" +
 	"\fUpdateTenant\x12\x1b.rag.v1.UpdateTenantRequest\x1a\x0e.rag.v1.Tenant\"\x1b\x82\xd3\xe4\x93\x02\x15:\x01*2\x10/v1/tenants/{id}\x12c\n" +
@@ -903,49 +962,51 @@ func file_rag_v1_tenant_proto_rawDescGZIP() []byte {
 	return file_rag_v1_tenant_proto_rawDescData
 }
 
-var file_rag_v1_tenant_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_rag_v1_tenant_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_rag_v1_tenant_proto_goTypes = []any{
 	(*Tenant)(nil),                   // 0: rag.v1.Tenant
 	(*TenantConfig)(nil),             // 1: rag.v1.TenantConfig
 	(*ChunkerConfig)(nil),            // 2: rag.v1.ChunkerConfig
 	(*TenantUsage)(nil),              // 3: rag.v1.TenantUsage
 	(*CreateTenantRequest)(nil),      // 4: rag.v1.CreateTenantRequest
-	(*GetTenantRequest)(nil),         // 5: rag.v1.GetTenantRequest
-	(*ListTenantsRequest)(nil),       // 6: rag.v1.ListTenantsRequest
-	(*ListTenantsResponse)(nil),      // 7: rag.v1.ListTenantsResponse
-	(*UpdateTenantRequest)(nil),      // 8: rag.v1.UpdateTenantRequest
-	(*DeleteTenantRequest)(nil),      // 9: rag.v1.DeleteTenantRequest
-	(*DeleteTenantResponse)(nil),     // 10: rag.v1.DeleteTenantResponse
-	(*RegenerateAPIKeyRequest)(nil),  // 11: rag.v1.RegenerateAPIKeyRequest
-	(*RegenerateAPIKeyResponse)(nil), // 12: rag.v1.RegenerateAPIKeyResponse
-	(*timestamppb.Timestamp)(nil),    // 13: google.protobuf.Timestamp
+	(*CreateTenantResponse)(nil),     // 5: rag.v1.CreateTenantResponse
+	(*GetTenantRequest)(nil),         // 6: rag.v1.GetTenantRequest
+	(*ListTenantsRequest)(nil),       // 7: rag.v1.ListTenantsRequest
+	(*ListTenantsResponse)(nil),      // 8: rag.v1.ListTenantsResponse
+	(*UpdateTenantRequest)(nil),      // 9: rag.v1.UpdateTenantRequest
+	(*DeleteTenantRequest)(nil),      // 10: rag.v1.DeleteTenantRequest
+	(*DeleteTenantResponse)(nil),     // 11: rag.v1.DeleteTenantResponse
+	(*RegenerateAPIKeyRequest)(nil),  // 12: rag.v1.RegenerateAPIKeyRequest
+	(*RegenerateAPIKeyResponse)(nil), // 13: rag.v1.RegenerateAPIKeyResponse
+	(*timestamppb.Timestamp)(nil),    // 14: google.protobuf.Timestamp
 }
 var file_rag_v1_tenant_proto_depIdxs = []int32{
 	1,  // 0: rag.v1.Tenant.config:type_name -> rag.v1.TenantConfig
 	3,  // 1: rag.v1.Tenant.usage:type_name -> rag.v1.TenantUsage
-	13, // 2: rag.v1.Tenant.created_at:type_name -> google.protobuf.Timestamp
-	13, // 3: rag.v1.Tenant.updated_at:type_name -> google.protobuf.Timestamp
+	14, // 2: rag.v1.Tenant.created_at:type_name -> google.protobuf.Timestamp
+	14, // 3: rag.v1.Tenant.updated_at:type_name -> google.protobuf.Timestamp
 	2,  // 4: rag.v1.TenantConfig.chunker:type_name -> rag.v1.ChunkerConfig
 	1,  // 5: rag.v1.CreateTenantRequest.config:type_name -> rag.v1.TenantConfig
-	0,  // 6: rag.v1.ListTenantsResponse.tenants:type_name -> rag.v1.Tenant
-	1,  // 7: rag.v1.UpdateTenantRequest.config:type_name -> rag.v1.TenantConfig
-	4,  // 8: rag.v1.TenantService.CreateTenant:input_type -> rag.v1.CreateTenantRequest
-	5,  // 9: rag.v1.TenantService.GetTenant:input_type -> rag.v1.GetTenantRequest
-	6,  // 10: rag.v1.TenantService.ListTenants:input_type -> rag.v1.ListTenantsRequest
-	8,  // 11: rag.v1.TenantService.UpdateTenant:input_type -> rag.v1.UpdateTenantRequest
-	9,  // 12: rag.v1.TenantService.DeleteTenant:input_type -> rag.v1.DeleteTenantRequest
-	11, // 13: rag.v1.TenantService.RegenerateAPIKey:input_type -> rag.v1.RegenerateAPIKeyRequest
-	0,  // 14: rag.v1.TenantService.CreateTenant:output_type -> rag.v1.Tenant
-	0,  // 15: rag.v1.TenantService.GetTenant:output_type -> rag.v1.Tenant
-	7,  // 16: rag.v1.TenantService.ListTenants:output_type -> rag.v1.ListTenantsResponse
-	0,  // 17: rag.v1.TenantService.UpdateTenant:output_type -> rag.v1.Tenant
-	10, // 18: rag.v1.TenantService.DeleteTenant:output_type -> rag.v1.DeleteTenantResponse
-	12, // 19: rag.v1.TenantService.RegenerateAPIKey:output_type -> rag.v1.RegenerateAPIKeyResponse
-	14, // [14:20] is the sub-list for method output_type
-	8,  // [8:14] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	0,  // 6: rag.v1.CreateTenantResponse.tenant:type_name -> rag.v1.Tenant
+	0,  // 7: rag.v1.ListTenantsResponse.tenants:type_name -> rag.v1.Tenant
+	1,  // 8: rag.v1.UpdateTenantRequest.config:type_name -> rag.v1.TenantConfig
+	4,  // 9: rag.v1.TenantService.CreateTenant:input_type -> rag.v1.CreateTenantRequest
+	6,  // 10: rag.v1.TenantService.GetTenant:input_type -> rag.v1.GetTenantRequest
+	7,  // 11: rag.v1.TenantService.ListTenants:input_type -> rag.v1.ListTenantsRequest
+	9,  // 12: rag.v1.TenantService.UpdateTenant:input_type -> rag.v1.UpdateTenantRequest
+	10, // 13: rag.v1.TenantService.DeleteTenant:input_type -> rag.v1.DeleteTenantRequest
+	12, // 14: rag.v1.TenantService.RegenerateAPIKey:input_type -> rag.v1.RegenerateAPIKeyRequest
+	5,  // 15: rag.v1.TenantService.CreateTenant:output_type -> rag.v1.CreateTenantResponse
+	0,  // 16: rag.v1.TenantService.GetTenant:output_type -> rag.v1.Tenant
+	8,  // 17: rag.v1.TenantService.ListTenants:output_type -> rag.v1.ListTenantsResponse
+	0,  // 18: rag.v1.TenantService.UpdateTenant:output_type -> rag.v1.Tenant
+	11, // 19: rag.v1.TenantService.DeleteTenant:output_type -> rag.v1.DeleteTenantResponse
+	13, // 20: rag.v1.TenantService.RegenerateAPIKey:output_type -> rag.v1.RegenerateAPIKeyResponse
+	15, // [15:21] is the sub-list for method output_type
+	9,  // [9:15] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_rag_v1_tenant_proto_init() }
@@ -960,7 +1021,7 @@ func file_rag_v1_tenant_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_rag_v1_tenant_proto_rawDesc), len(file_rag_v1_tenant_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

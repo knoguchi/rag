@@ -23,7 +23,7 @@ option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
 // TenantService manages tenant configuration and API keys
 service TenantService {
   // CreateTenant creates a new tenant with default configuration
-  rpc CreateTenant(CreateTenantRequest) returns (Tenant) {
+  rpc CreateTenant(CreateTenantRequest) returns (CreateTenantResponse) {
     option (google.api.http) = {
       post: "/v1/tenants"
       body: "*"
@@ -70,7 +70,12 @@ service TenantService {
 message Tenant {
   string id = 1;
   string name = 2;
-  string api_key = 3;
+  // The full API key is never returned here; it is shown exactly once, in
+  // CreateTenantResponse / RegenerateAPIKeyResponse.
+  reserved 3;
+  reserved "api_key";
+  // First characters of the API key, for display/identification
+  string key_prefix = 8;
   TenantConfig config = 4;
   TenantUsage usage = 5;
   google.protobuf.Timestamp created_at = 6;
@@ -137,6 +142,13 @@ message CreateTenantRequest {
   // Optional: specify a custom ID instead of generating one
   // Useful for testing and deterministic tenant creation
   string id = 3;
+}
+
+message CreateTenantResponse {
+  Tenant tenant = 1;
+  // The tenant's API key. Shown only here and on key regeneration — store
+  // it securely, it cannot be retrieved again.
+  string api_key = 2;
 }
 
 message GetTenantRequest {

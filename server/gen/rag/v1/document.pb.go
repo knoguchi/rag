@@ -292,7 +292,6 @@ func (x *DocumentChunk) GetCreatedAt() *timestamppb.Timestamp {
 
 type IngestDocumentRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	Content       string                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"` // Raw text content
 	Title         string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`     // Optional title
 	Source        string                 `protobuf:"bytes,4,opt,name=source,proto3" json:"source,omitempty"`   // Optional source identifier
@@ -331,13 +330,6 @@ func (*IngestDocumentRequest) Descriptor() ([]byte, []int) {
 	return file_rag_v1_document_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *IngestDocumentRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
-}
-
 func (x *IngestDocumentRequest) GetContent() string {
 	if x != nil {
 		return x.Content
@@ -368,7 +360,6 @@ func (x *IngestDocumentRequest) GetMetadata() map[string]string {
 
 type IngestURLRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	Url           string                 `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`
 	UseHeadless   bool                   `protobuf:"varint,3,opt,name=use_headless,json=useHeadless,proto3" json:"use_headless,omitempty"` // Use headless browser for JS-heavy sites
 	Metadata      map[string]string      `protobuf:"bytes,4,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
@@ -404,13 +395,6 @@ func (x *IngestURLRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use IngestURLRequest.ProtoReflect.Descriptor instead.
 func (*IngestURLRequest) Descriptor() ([]byte, []int) {
 	return file_rag_v1_document_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *IngestURLRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *IngestURLRequest) GetUrl() string {
@@ -532,7 +516,6 @@ func (x *GetDocumentRequest) GetId() string {
 
 type ListDocumentsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	PageSize      int32                  `protobuf:"varint,2,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
 	PageToken     string                 `protobuf:"bytes,3,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
 	StatusFilter  DocumentStatus         `protobuf:"varint,4,opt,name=status_filter,json=statusFilter,proto3,enum=rag.v1.DocumentStatus" json:"status_filter,omitempty"` // Optional filter by status
@@ -568,13 +551,6 @@ func (x *ListDocumentsRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ListDocumentsRequest.ProtoReflect.Descriptor instead.
 func (*ListDocumentsRequest) Descriptor() ([]byte, []int) {
 	return file_rag_v1_document_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *ListDocumentsRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *ListDocumentsRequest) GetPageSize() int32 {
@@ -894,36 +870,33 @@ const file_rag_v1_document_proto_rawDesc = "" +
 	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x82\x02\n" +
-	"\x15IngestDocumentRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x18\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xf6\x01\n" +
+	"\x15IngestDocumentRequest\x12\x18\n" +
 	"\acontent\x18\x02 \x01(\tR\acontent\x12\x14\n" +
 	"\x05title\x18\x03 \x01(\tR\x05title\x12\x16\n" +
 	"\x06source\x18\x04 \x01(\tR\x06source\x12G\n" +
 	"\bmetadata\x18\x05 \x03(\v2+.rag.v1.IngestDocumentRequest.MetadataEntryR\bmetadata\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xe5\x01\n" +
-	"\x10IngestURLRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x10\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01J\x04\b\x01\x10\x02R\ttenant_id\"\xd9\x01\n" +
+	"\x10IngestURLRequest\x12\x10\n" +
 	"\x03url\x18\x02 \x01(\tR\x03url\x12!\n" +
 	"\fuse_headless\x18\x03 \x01(\bR\vuseHeadless\x12B\n" +
 	"\bmetadata\x18\x04 \x03(\v2&.rag.v1.IngestURLRequest.MetadataEntryR\bmetadata\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"i\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01J\x04\b\x01\x10\x02R\ttenant_id\"i\n" +
 	"\x16IngestDocumentResponse\x12\x1f\n" +
 	"\vdocument_id\x18\x01 \x01(\tR\n" +
 	"documentId\x12.\n" +
 	"\x06status\x18\x02 \x01(\x0e2\x16.rag.v1.DocumentStatusR\x06status\"$\n" +
 	"\x12GetDocumentRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\xac\x01\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xa0\x01\n" +
 	"\x14ListDocumentsRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1b\n" +
 	"\tpage_size\x18\x02 \x01(\x05R\bpageSize\x12\x1d\n" +
 	"\n" +
 	"page_token\x18\x03 \x01(\tR\tpageToken\x12;\n" +
-	"\rstatus_filter\x18\x04 \x01(\x0e2\x16.rag.v1.DocumentStatusR\fstatusFilter\"\x90\x01\n" +
+	"\rstatus_filter\x18\x04 \x01(\x0e2\x16.rag.v1.DocumentStatusR\fstatusFilterJ\x04\b\x01\x10\x02R\ttenant_id\"\x90\x01\n" +
 	"\x15ListDocumentsResponse\x12.\n" +
 	"\tdocuments\x18\x01 \x03(\v2\x10.rag.v1.DocumentR\tdocuments\x12&\n" +
 	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\x12\x1f\n" +

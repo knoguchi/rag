@@ -231,9 +231,6 @@
     "v1QueryRequest": {
       "type": "object",
       "properties": {
-        "tenantId": {
-          "type": "string"
-        },
         "query": {
           "type": "string"
         },
@@ -331,9 +328,6 @@
     "v1RetrieveRequest": {
       "type": "object",
       "properties": {
-        "tenantId": {
-          "type": "string"
-        },
         "query": {
           "type": "string"
         },

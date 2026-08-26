@@ -3,10 +3,9 @@ package service
 import (
 	"context"
 
-	"github.com/google/uuid"
 	ragv1 "github.com/knoguchi/rag/gen/rag/v1"
+	"github.com/knoguchi/rag/internal/auth"
 	"github.com/knoguchi/rag/internal/ragcore"
-	"github.com/knoguchi/rag/internal/repository"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -18,41 +17,24 @@ import (
 type RAGService struct {
 	ragv1.UnimplementedRAGServiceServer
 
-	tenantRepo repository.TenantRepository
-	engine     *ragcore.Engine
+	engine *ragcore.Engine
 }
 
 // NewRAGService creates a new RAGService
-func NewRAGService(tenantRepo repository.TenantRepository, engine *ragcore.Engine) *RAGService {
-	return &RAGService{
-		tenantRepo: tenantRepo,
-		engine:     engine,
-	}
+func NewRAGService(engine *ragcore.Engine) *RAGService {
+	return &RAGService{engine: engine}
 }
 
-// resolveTenant validates the request tenant ID and loads the tenant.
-func (s *RAGService) resolveTenant(ctx context.Context, tenantID, query string) (*repository.Tenant, error) {
-	if tenantID == "" {
-		return nil, status.Error(codes.InvalidArgument, "tenant_id is required")
-	}
+// resolveTenant returns the authenticated tenant from the request context.
+func resolveTenant(ctx context.Context, query string) (*auth.TenantInfo, error) {
 	if query == "" {
 		return nil, status.Error(codes.InvalidArgument, "query is required")
 	}
-
-	id, err := uuid.Parse(tenantID)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid tenant_id format")
-	}
-
-	tenant, err := s.tenantRepo.GetByID(ctx, id)
-	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "tenant not found: %v", err)
-	}
-	return tenant, nil
+	return auth.RequireTenant(ctx)
 }
 
 // buildOptions resolves engine options from tenant config and request options.
-func buildOptions(tenant *repository.Tenant, opts *ragv1.QueryOptions, sessionID string) ragcore.Options {
+func buildOptions(tenant *auth.TenantInfo, opts *ragv1.QueryOptions, sessionID string) ragcore.Options {
 	options := ragcore.Options{
 		TopK:          tenant.Config.TopK,
 		MinScore:      tenant.Config.MinScore,
@@ -112,7 +94,7 @@ func toProtoChunk(c ragcore.RetrievedChunk) *ragv1.RetrievedChunk {
 
 // Query retrieves context and generates an LLM response
 func (s *RAGService) Query(ctx context.Context, req *ragv1.QueryRequest) (*ragv1.QueryResponse, error) {
-	tenant, err := s.resolveTenant(ctx, req.TenantId, req.Query)
+	tenant, err := resolveTenant(ctx, req.Query)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +130,7 @@ func (s *RAGService) Query(ctx context.Context, req *ragv1.QueryRequest) (*ragv1
 func (s *RAGService) QueryStream(req *ragv1.QueryRequest, stream grpc.ServerStreamingServer[ragv1.QueryStreamResponse]) error {
 	ctx := stream.Context()
 
-	tenant, err := s.resolveTenant(ctx, req.TenantId, req.Query)
+	tenant, err := resolveTenant(ctx, req.Query)
 	if err != nil {
 		return err
 	}
@@ -201,7 +183,7 @@ func (s *RAGService) QueryStream(req *ragv1.QueryRequest, stream grpc.ServerStre
 
 // Retrieve only retrieves relevant chunks without LLM generation
 func (s *RAGService) Retrieve(ctx context.Context, req *ragv1.RetrieveRequest) (*ragv1.RetrieveResponse, error) {
-	tenant, err := s.resolveTenant(ctx, req.TenantId, req.Query)
+	tenant, err := resolveTenant(ctx, req.Query)
 	if err != nil {
 		return nil, err
 	}

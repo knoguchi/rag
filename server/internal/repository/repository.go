@@ -13,11 +13,12 @@ import (
 // ErrNotFound is returned when a requested entity does not exist
 var ErrNotFound = errors.New("not found")
 
-// Tenant represents a tenant in the system
+// Tenant represents a tenant in the system. API keys are stored only as a
+// SHA-256 hash; KeyPrefix holds the first characters for display.
 type Tenant struct {
 	ID        uuid.UUID
 	Name      string
-	APIKey    string
+	KeyPrefix string
 	Config    TenantConfig
 	Usage     TenantUsage
 	CreatedAt time.Time
@@ -66,6 +67,7 @@ type Document struct {
 type DocumentChunk struct {
 	ID         uuid.UUID
 	DocumentID uuid.UUID
+	TenantID   uuid.UUID
 	ChunkIndex int
 	Content    string
 	Metadata   map[string]string
@@ -120,29 +122,34 @@ type CrawledPage struct {
 
 // TenantRepository defines operations for tenant persistence
 type TenantRepository interface {
-	Create(ctx context.Context, tenant *Tenant) error
+	// Create persists the tenant; apiKey is the plaintext key, stored hashed.
+	Create(ctx context.Context, tenant *Tenant, apiKey string) error
 	GetByID(ctx context.Context, id uuid.UUID) (*Tenant, error)
+	// GetByAPIKey looks a tenant up by plaintext API key (hashed internally).
 	GetByAPIKey(ctx context.Context, apiKey string) (*Tenant, error)
 	List(ctx context.Context, limit, offset int) ([]*Tenant, int, error)
 	Update(ctx context.Context, tenant *Tenant) error
 	Delete(ctx context.Context, id uuid.UUID) error
+	// UpdateAPIKey replaces the tenant's API key (stored hashed).
 	UpdateAPIKey(ctx context.Context, id uuid.UUID, newAPIKey string) error
 	UpdateUsage(ctx context.Context, id uuid.UUID, usage TenantUsage) error
 }
 
-// DocumentRepository defines operations for document persistence
+// DocumentRepository defines operations for document persistence. All
+// single-document operations are tenant-scoped in SQL: a document belonging
+// to another tenant is indistinguishable from a missing one (ErrNotFound).
 type DocumentRepository interface {
 	Create(ctx context.Context, doc *Document) error
-	GetByID(ctx context.Context, id uuid.UUID) (*Document, error)
+	GetByID(ctx context.Context, tenantID, id uuid.UUID) (*Document, error)
 	GetByHash(ctx context.Context, tenantID uuid.UUID, hash string) (*Document, error)
 	List(ctx context.Context, tenantID uuid.UUID, status string, limit, offset int) ([]*Document, int, error)
 	Update(ctx context.Context, doc *Document) error
-	Delete(ctx context.Context, id uuid.UUID) error
+	Delete(ctx context.Context, tenantID, id uuid.UUID) error
 
 	// Chunk operations
 	CreateChunks(ctx context.Context, chunks []*DocumentChunk) error
-	GetChunks(ctx context.Context, documentID uuid.UUID, limit, offset int) ([]*DocumentChunk, error)
-	DeleteChunks(ctx context.Context, documentID uuid.UUID) error
+	GetChunks(ctx context.Context, tenantID, documentID uuid.UUID, limit, offset int) ([]*DocumentChunk, error)
+	DeleteChunks(ctx context.Context, tenantID, documentID uuid.UUID) error
 }
 
 // CrawlJobRepository defines operations for crawl job persistence

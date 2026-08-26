@@ -3,6 +3,7 @@ package auth
 
 import (
 	"context"
+	"crypto/subtle"
 	"strings"
 
 	"github.com/google/uuid"
@@ -22,22 +23,24 @@ const (
 
 	// tenantContextKey is the context key for storing tenant info
 	tenantContextKey contextKey = "tenant"
+
+	// adminContextKey marks a request authenticated with the admin API key
+	adminContextKey contextKey = "admin"
 )
 
 // TenantInfo holds tenant information extracted from authentication
 type TenantInfo struct {
 	ID     uuid.UUID
 	Name   string
-	APIKey string
 	Config repository.TenantConfig
 }
 
 // APIKeyInterceptor provides gRPC interceptor for API key validation
 type APIKeyInterceptor struct {
-	tenantRepo     repository.TenantRepository
-	skipMethods    map[string]bool
-	adminAPIKey    string
-	adminMethods   map[string]bool
+	tenantRepo   repository.TenantRepository
+	skipMethods  map[string]bool
+	adminAPIKey  string
+	adminMethods map[string]bool
 }
 
 // NewAPIKeyInterceptor creates a new API key interceptor
@@ -95,16 +98,13 @@ func (i *APIKeyInterceptor) UnaryInterceptor() grpc.UnaryServerInterceptor {
 			return nil, err
 		}
 
-		// Check if this is an admin method
+		// The admin key authenticates any method and marks the context
+		if i.adminAPIKey != "" && subtle.ConstantTimeCompare([]byte(apiKey), []byte(i.adminAPIKey)) == 1 {
+			return handler(context.WithValue(ctx, adminContextKey, true), req)
+		}
 		if i.adminMethods[info.FullMethod] {
-			if i.adminAPIKey == "" {
-				return nil, status.Error(codes.PermissionDenied, "admin API key not configured")
-			}
-			if apiKey != i.adminAPIKey {
-				return nil, status.Error(codes.PermissionDenied, "invalid admin API key")
-			}
-			// Admin methods don't need tenant context
-			return handler(ctx, req)
+			// Admin-only methods never accept tenant keys
+			return nil, status.Error(codes.PermissionDenied, "admin API key required")
 		}
 
 		// Validate tenant API key
@@ -120,7 +120,6 @@ func (i *APIKeyInterceptor) UnaryInterceptor() grpc.UnaryServerInterceptor {
 		tenantInfo := &TenantInfo{
 			ID:     tenant.ID,
 			Name:   tenant.Name,
-			APIKey: tenant.APIKey,
 			Config: tenant.Config,
 		}
 		ctx = context.WithValue(ctx, tenantContextKey, tenantInfo)
@@ -150,15 +149,16 @@ func (i *APIKeyInterceptor) StreamInterceptor() grpc.StreamServerInterceptor {
 			return err
 		}
 
-		// Check if this is an admin method
+		// The admin key authenticates any method and marks the context
+		if i.adminAPIKey != "" && subtle.ConstantTimeCompare([]byte(apiKey), []byte(i.adminAPIKey)) == 1 {
+			return handler(srv, &wrappedServerStream{
+				ServerStream: ss,
+				ctx:          context.WithValue(ctx, adminContextKey, true),
+			})
+		}
 		if i.adminMethods[info.FullMethod] {
-			if i.adminAPIKey == "" {
-				return status.Error(codes.PermissionDenied, "admin API key not configured")
-			}
-			if apiKey != i.adminAPIKey {
-				return status.Error(codes.PermissionDenied, "invalid admin API key")
-			}
-			return handler(srv, ss)
+			// Admin-only methods never accept tenant keys
+			return status.Error(codes.PermissionDenied, "admin API key required")
 		}
 
 		// Validate tenant API key
@@ -174,7 +174,6 @@ func (i *APIKeyInterceptor) StreamInterceptor() grpc.StreamServerInterceptor {
 		tenantInfo := &TenantInfo{
 			ID:     tenant.ID,
 			Name:   tenant.Name,
-			APIKey: tenant.APIKey,
 			Config: tenant.Config,
 		}
 		wrappedStream := &wrappedServerStream{
@@ -230,6 +229,12 @@ func RequireTenant(ctx context.Context) (*TenantInfo, error) {
 		return nil, status.Error(codes.Unauthenticated, "tenant context not found")
 	}
 	return tenant, nil
+}
+
+// IsAdmin reports whether the request was authenticated with the admin API key.
+func IsAdmin(ctx context.Context) bool {
+	admin, _ := ctx.Value(adminContextKey).(bool)
+	return admin
 }
 
 // TenantIDFromContext extracts just the tenant ID from context

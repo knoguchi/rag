@@ -102,7 +102,9 @@ message DocumentChunk {
 }
 
 message IngestDocumentRequest {
-  string tenant_id = 1;
+  // The tenant is derived from the authenticated API key.
+  reserved 1;
+  reserved "tenant_id";
   string content = 2;             // Raw text content
   string title = 3;               // Optional title
   string source = 4;              // Optional source identifier
@@ -110,7 +112,9 @@ message IngestDocumentRequest {
 }
 
 message IngestURLRequest {
-  string tenant_id = 1;
+  // The tenant is derived from the authenticated API key.
+  reserved 1;
+  reserved "tenant_id";
   string url = 2;
   bool use_headless = 3;          // Use headless browser for JS-heavy sites
   map<string, string> metadata = 4;
@@ -126,7 +130,9 @@ message GetDocumentRequest {
 }
 
 message ListDocumentsRequest {
-  string tenant_id = 1;
+  // The tenant is derived from the authenticated API key.
+  reserved 1;
+  reserved "tenant_id";
   int32 page_size = 2;
   string page_token = 3;
   DocumentStatus status_filter = 4;  // Optional filter by status

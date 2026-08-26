@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	ragv1 "github.com/knoguchi/rag/gen/rag/v1"
+	"github.com/knoguchi/rag/internal/auth"
 	"github.com/knoguchi/rag/internal/config"
 	"github.com/knoguchi/rag/internal/ragcore"
 	"github.com/knoguchi/rag/internal/ragcore/embedder"
@@ -39,8 +40,10 @@ func NewTenantService(repo repository.TenantRepository, engine *ragcore.Engine, 
 	}
 }
 
-// CreateTenant creates a new tenant with default configuration
-func (s *TenantService) CreateTenant(ctx context.Context, req *ragv1.CreateTenantRequest) (*ragv1.Tenant, error) {
+// CreateTenant creates a new tenant with default configuration.
+// The response is the only place (besides RegenerateAPIKey) the API key is
+// ever returned.
+func (s *TenantService) CreateTenant(ctx context.Context, req *ragv1.CreateTenantRequest) (*ragv1.CreateTenantResponse, error) {
 	if req.Name == "" {
 		return nil, status.Error(codes.InvalidArgument, "name is required")
 	}
@@ -75,14 +78,13 @@ func (s *TenantService) CreateTenant(ctx context.Context, req *ragv1.CreateTenan
 	tenant := &repository.Tenant{
 		ID:        tenantID,
 		Name:      req.Name,
-		APIKey:    apiKey,
 		Config:    tenantConfig,
 		Usage:     repository.TenantUsage{},
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
 
-	if err := s.repo.Create(ctx, tenant); err != nil {
+	if err := s.repo.Create(ctx, tenant, apiKey); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create tenant: %v", err)
 	}
 
@@ -91,10 +93,14 @@ func (s *TenantService) CreateTenant(ctx context.Context, req *ragv1.CreateTenan
 		slog.Error("failed to create vector collection", "error", err, "tenant_id", tenant.ID)
 	}
 
-	return s.tenantToProto(tenant), nil
+	return &ragv1.CreateTenantResponse{
+		Tenant: s.tenantToProto(tenant),
+		ApiKey: apiKey,
+	}, nil
 }
 
-// GetTenant retrieves a tenant by ID
+// GetTenant retrieves a tenant by ID. Tenant keys may read only their own
+// tenant; the admin key may read any.
 func (s *TenantService) GetTenant(ctx context.Context, req *ragv1.GetTenantRequest) (*ragv1.Tenant, error) {
 	if req.Id == "" {
 		return nil, status.Error(codes.InvalidArgument, "id is required")
@@ -103,6 +109,10 @@ func (s *TenantService) GetTenant(ctx context.Context, req *ragv1.GetTenantReque
 	id, err := uuid.Parse(req.Id)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid tenant ID format")
+	}
+
+	if err := requireSelfOrAdmin(ctx, id); err != nil {
+		return nil, err
 	}
 
 	tenant, err := s.repo.GetByID(ctx, id)
@@ -164,6 +174,10 @@ func (s *TenantService) UpdateTenant(ctx context.Context, req *ragv1.UpdateTenan
 	id, err := uuid.Parse(req.Id)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid tenant ID format")
+	}
+
+	if err := requireSelfOrAdmin(ctx, id); err != nil {
+		return nil, err
 	}
 
 	tenant, err := s.repo.GetByID(ctx, id)
@@ -254,6 +268,23 @@ func (s *TenantService) RegenerateAPIKey(ctx context.Context, req *ragv1.Regener
 	return &ragv1.RegenerateAPIKeyResponse{
 		ApiKey: newAPIKey,
 	}, nil
+}
+
+// requireSelfOrAdmin allows the admin key, or a tenant key matching the
+// target tenant ID.
+func requireSelfOrAdmin(ctx context.Context, id uuid.UUID) error {
+	if auth.IsAdmin(ctx) {
+		return nil
+	}
+	tenant, err := auth.RequireTenant(ctx)
+	if err != nil {
+		return err
+	}
+	if tenant.ID != id {
+		// Do not reveal whether the tenant exists
+		return status.Error(codes.NotFound, "tenant not found")
+	}
+	return nil
 }
 
 // generateAPIKey generates a new API key with format "rag_" + 32 random hex chars
@@ -432,9 +463,9 @@ func (s *TenantService) validateTenantConfig(config repository.TenantConfig) err
 // tenantToProto converts a repository Tenant to proto Tenant
 func (s *TenantService) tenantToProto(t *repository.Tenant) *ragv1.Tenant {
 	return &ragv1.Tenant{
-		Id:     t.ID.String(),
-		Name:   t.Name,
-		ApiKey: t.APIKey,
+		Id:        t.ID.String(),
+		Name:      t.Name,
+		KeyPrefix: t.KeyPrefix,
 		Config: &ragv1.TenantConfig{
 			EmbeddingModel: t.Config.EmbeddingModel,
 			LlmModel:       t.Config.LLMModel,

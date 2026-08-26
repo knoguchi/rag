@@ -25,20 +25,26 @@ func (m *mockTenantRepo) GetByAPIKey(_ context.Context, apiKey string) (*reposit
 	return t, nil
 }
 
-func (m *mockTenantRepo) Create(context.Context, *repository.Tenant) error                   { return nil }
-func (m *mockTenantRepo) GetByID(context.Context, uuid.UUID) (*repository.Tenant, error)     { return nil, repository.ErrNotFound }
-func (m *mockTenantRepo) List(context.Context, int, int) ([]*repository.Tenant, int, error)  { return nil, 0, nil }
-func (m *mockTenantRepo) Update(context.Context, *repository.Tenant) error                   { return nil }
-func (m *mockTenantRepo) Delete(context.Context, uuid.UUID) error                            { return nil }
-func (m *mockTenantRepo) UpdateAPIKey(context.Context, uuid.UUID, string) error              { return nil }
-func (m *mockTenantRepo) UpdateUsage(context.Context, uuid.UUID, repository.TenantUsage) error { return nil }
+func (m *mockTenantRepo) Create(context.Context, *repository.Tenant, string) error { return nil }
+func (m *mockTenantRepo) GetByID(context.Context, uuid.UUID) (*repository.Tenant, error) {
+	return nil, repository.ErrNotFound
+}
+func (m *mockTenantRepo) List(context.Context, int, int) ([]*repository.Tenant, int, error) {
+	return nil, 0, nil
+}
+func (m *mockTenantRepo) Update(context.Context, *repository.Tenant) error      { return nil }
+func (m *mockTenantRepo) Delete(context.Context, uuid.UUID) error               { return nil }
+func (m *mockTenantRepo) UpdateAPIKey(context.Context, uuid.UUID, string) error { return nil }
+func (m *mockTenantRepo) UpdateUsage(context.Context, uuid.UUID, repository.TenantUsage) error {
+	return nil
+}
 
 func newTestInterceptor() (*APIKeyInterceptor, *repository.Tenant) {
 	tenantID := uuid.New()
 	tenant := &repository.Tenant{
-		ID:     tenantID,
-		Name:   "test-tenant",
-		APIKey: "rag_test123",
+		ID:        tenantID,
+		Name:      "test-tenant",
+		KeyPrefix: "rag_test123"[:11],
 	}
 	repo := &mockTenantRepo{
 		tenants: map[string]*repository.Tenant{
@@ -153,6 +159,39 @@ func TestUnaryInterceptor_AdminMethod_InvalidKey(t *testing.T) {
 	}
 	if s, ok := status.FromError(err); !ok || s.Code() != codes.PermissionDenied {
 		t.Fatalf("expected PermissionDenied, got: %v", err)
+	}
+}
+
+func TestUnaryInterceptor_AdminMethod_TenantKeyRejected(t *testing.T) {
+	interceptor, _ := newTestInterceptor()
+	unary := interceptor.UnaryInterceptor()
+
+	// A valid tenant key must not authorize admin-only methods
+	ctx := ctxWithAPIKey("rag_test123")
+	info := &grpc.UnaryServerInfo{FullMethod: "/rag.v1.TenantService/CreateTenant"}
+	_, err := unary(ctx, nil, info, noopHandler)
+	if err == nil {
+		t.Fatal("expected error for tenant key on admin method")
+	}
+	if s, ok := status.FromError(err); !ok || s.Code() != codes.PermissionDenied {
+		t.Fatalf("expected PermissionDenied, got: %v", err)
+	}
+}
+
+func TestUnaryInterceptor_AdminKey_MarksContext(t *testing.T) {
+	interceptor, _ := newTestInterceptor()
+	unary := interceptor.UnaryInterceptor()
+
+	ctx := ctxWithAPIKey("admin-secret-key")
+	info := &grpc.UnaryServerInfo{FullMethod: "/rag.v1.TenantService/GetTenant"}
+	handler := func(ctx context.Context, req any) (any, error) {
+		if !IsAdmin(ctx) {
+			t.Fatal("expected admin marker in context")
+		}
+		return "ok", nil
+	}
+	if _, err := unary(ctx, nil, info, handler); err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 

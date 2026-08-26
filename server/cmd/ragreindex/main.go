@@ -186,7 +186,7 @@ func reindexDocument(
 	var chunks []ragcore.IngestedChunk
 
 	for offset := 0; ; offset += chunkPage {
-		stored, err := docRepo.GetChunks(ctx, doc.ID, chunkPage, offset)
+		stored, err := docRepo.GetChunks(ctx, tenant.ID, doc.ID, chunkPage, offset)
 		if err != nil {
 			return fmt.Errorf("failed to load chunks: %w", err)
 		}

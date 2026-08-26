@@ -34,7 +34,7 @@ const (
 // TenantService manages tenant configuration and API keys
 type TenantServiceClient interface {
 	// CreateTenant creates a new tenant with default configuration
-	CreateTenant(ctx context.Context, in *CreateTenantRequest, opts ...grpc.CallOption) (*Tenant, error)
+	CreateTenant(ctx context.Context, in *CreateTenantRequest, opts ...grpc.CallOption) (*CreateTenantResponse, error)
 	// GetTenant retrieves a tenant by ID
 	GetTenant(ctx context.Context, in *GetTenantRequest, opts ...grpc.CallOption) (*Tenant, error)
 	// ListTenants lists all tenants (admin only)
@@ -55,9 +55,9 @@ func NewTenantServiceClient(cc grpc.ClientConnInterface) TenantServiceClient {
 	return &tenantServiceClient{cc}
 }
 
-func (c *tenantServiceClient) CreateTenant(ctx context.Context, in *CreateTenantRequest, opts ...grpc.CallOption) (*Tenant, error) {
+func (c *tenantServiceClient) CreateTenant(ctx context.Context, in *CreateTenantRequest, opts ...grpc.CallOption) (*CreateTenantResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Tenant)
+	out := new(CreateTenantResponse)
 	err := c.cc.Invoke(ctx, TenantService_CreateTenant_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -122,7 +122,7 @@ func (c *tenantServiceClient) RegenerateAPIKey(ctx context.Context, in *Regenera
 // TenantService manages tenant configuration and API keys
 type TenantServiceServer interface {
 	// CreateTenant creates a new tenant with default configuration
-	CreateTenant(context.Context, *CreateTenantRequest) (*Tenant, error)
+	CreateTenant(context.Context, *CreateTenantRequest) (*CreateTenantResponse, error)
 	// GetTenant retrieves a tenant by ID
 	GetTenant(context.Context, *GetTenantRequest) (*Tenant, error)
 	// ListTenants lists all tenants (admin only)
@@ -143,7 +143,7 @@ type TenantServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedTenantServiceServer struct{}
 
-func (UnimplementedTenantServiceServer) CreateTenant(context.Context, *CreateTenantRequest) (*Tenant, error) {
+func (UnimplementedTenantServiceServer) CreateTenant(context.Context, *CreateTenantRequest) (*CreateTenantResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateTenant not implemented")
 }
 func (UnimplementedTenantServiceServer) GetTenant(context.Context, *GetTenantRequest) (*Tenant, error) {

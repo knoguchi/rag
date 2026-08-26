@@ -16,6 +16,7 @@ import (
 
 	"github.com/google/uuid"
 	ragv1 "github.com/knoguchi/rag/gen/rag/v1"
+	"github.com/knoguchi/rag/internal/auth"
 	"github.com/knoguchi/rag/internal/ragcore"
 	"github.com/knoguchi/rag/internal/repository"
 	"google.golang.org/grpc/codes"
@@ -50,11 +51,22 @@ func NewDocumentService(
 
 // ingestTimeout bounds async document processing. Contextual ingestion runs
 // one LLM call per chunk, so it gets a much larger budget.
-func ingestTimeout(tenant *repository.Tenant) time.Duration {
-	if tenant.Config.ContextualRetrievalEnabled {
+func ingestTimeout(cfg repository.TenantConfig) time.Duration {
+	if cfg.ContextualRetrievalEnabled {
 		return 30 * time.Minute
 	}
 	return 10 * time.Minute
+}
+
+// authedTenant returns the authenticated tenant or an Unauthenticated error.
+func authedTenant(ctx context.Context) (*auth.TenantInfo, error) {
+	return auth.RequireTenant(ctx)
+}
+
+// tenantForProcessing adapts the authenticated tenant info to the repository
+// shape used by the async ingestion pipeline.
+func tenantForProcessing(t *auth.TenantInfo) *repository.Tenant {
+	return &repository.Tenant{ID: t.ID, Name: t.Name, Config: t.Config}
 }
 
 // Shutdown waits for all in-flight document processing goroutines to complete.
@@ -76,9 +88,6 @@ func (s *DocumentService) Shutdown(ctx context.Context) error {
 
 // IngestDocument ingests raw text content
 func (s *DocumentService) IngestDocument(ctx context.Context, req *ragv1.IngestDocumentRequest) (*ragv1.IngestDocumentResponse, error) {
-	if req.TenantId == "" {
-		return nil, status.Error(codes.InvalidArgument, "tenant_id is required")
-	}
 	if req.Content == "" {
 		return nil, status.Error(codes.InvalidArgument, "content is required")
 	}
@@ -87,19 +96,11 @@ func (s *DocumentService) IngestDocument(ctx context.Context, req *ragv1.IngestD
 		return nil, status.Errorf(codes.InvalidArgument, "content too large: %d bytes (max %d)", len(req.Content), maxContentSize)
 	}
 
-	tenantID, err := uuid.Parse(req.TenantId)
+	tenant, err := authedTenant(ctx)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid tenant_id format")
+		return nil, err
 	}
-
-	// Verify tenant exists and get config
-	tenant, err := s.tenantRepo.GetByID(ctx, tenantID)
-	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return nil, status.Error(codes.NotFound, "tenant not found")
-		}
-		return nil, status.Errorf(codes.Internal, "failed to get tenant: %v", err)
-	}
+	tenantID := tenant.ID
 
 	// Calculate content hash for deduplication
 	// Include source URL in hash so different pages with similar content are not deduplicated
@@ -152,9 +153,9 @@ func (s *DocumentService) IngestDocument(ctx context.Context, req *ragv1.IngestD
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
-		ctx, cancel := context.WithTimeout(context.Background(), ingestTimeout(tenant))
+		ctx, cancel := context.WithTimeout(context.Background(), ingestTimeout(tenant.Config))
 		defer cancel()
-		s.processDocument(ctx, doc, req.Content, tenant)
+		s.processDocument(ctx, doc, req.Content, tenantForProcessing(tenant))
 	}()
 
 	return &ragv1.IngestDocumentResponse{
@@ -165,26 +166,15 @@ func (s *DocumentService) IngestDocument(ctx context.Context, req *ragv1.IngestD
 
 // IngestURL fetches and ingests content from a URL
 func (s *DocumentService) IngestURL(ctx context.Context, req *ragv1.IngestURLRequest) (*ragv1.IngestDocumentResponse, error) {
-	if req.TenantId == "" {
-		return nil, status.Error(codes.InvalidArgument, "tenant_id is required")
-	}
 	if req.Url == "" {
 		return nil, status.Error(codes.InvalidArgument, "url is required")
 	}
 
-	tenantID, err := uuid.Parse(req.TenantId)
+	tenant, err := authedTenant(ctx)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid tenant_id format")
+		return nil, err
 	}
-
-	// Verify tenant exists and get config
-	tenant, err := s.tenantRepo.GetByID(ctx, tenantID)
-	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return nil, status.Error(codes.NotFound, "tenant not found")
-		}
-		return nil, status.Errorf(codes.Internal, "failed to get tenant: %v", err)
-	}
+	tenantID := tenant.ID
 
 	// Create document record first with PENDING status
 	now := time.Now()
@@ -207,9 +197,9 @@ func (s *DocumentService) IngestURL(ctx context.Context, req *ragv1.IngestURLReq
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
-		ctx, cancel := context.WithTimeout(context.Background(), ingestTimeout(tenant))
+		ctx, cancel := context.WithTimeout(context.Background(), ingestTimeout(tenant.Config))
 		defer cancel()
-		s.processURL(ctx, doc, req.Url, req.UseHeadless, tenant)
+		s.processURL(ctx, doc, req.Url, req.UseHeadless, tenantForProcessing(tenant))
 	}()
 
 	return &ragv1.IngestDocumentResponse{
@@ -229,7 +219,12 @@ func (s *DocumentService) GetDocument(ctx context.Context, req *ragv1.GetDocumen
 		return nil, status.Error(codes.InvalidArgument, "invalid document ID format")
 	}
 
-	doc, err := s.docRepo.GetByID(ctx, id)
+	tenant, err := authedTenant(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	doc, err := s.docRepo.GetByID(ctx, tenant.ID, id)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return nil, status.Error(codes.NotFound, "document not found")
@@ -240,16 +235,13 @@ func (s *DocumentService) GetDocument(ctx context.Context, req *ragv1.GetDocumen
 	return s.documentToProto(doc), nil
 }
 
-// ListDocuments lists documents for a tenant
+// ListDocuments lists documents for the authenticated tenant
 func (s *DocumentService) ListDocuments(ctx context.Context, req *ragv1.ListDocumentsRequest) (*ragv1.ListDocumentsResponse, error) {
-	if req.TenantId == "" {
-		return nil, status.Error(codes.InvalidArgument, "tenant_id is required")
-	}
-
-	tenantID, err := uuid.Parse(req.TenantId)
+	tenant, err := authedTenant(ctx)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid tenant_id format")
+		return nil, err
 	}
+	tenantID := tenant.ID
 
 	pageSize := int(req.PageSize)
 	if pageSize <= 0 {
@@ -305,8 +297,13 @@ func (s *DocumentService) DeleteDocument(ctx context.Context, req *ragv1.DeleteD
 		return nil, status.Error(codes.InvalidArgument, "invalid document ID format")
 	}
 
-	// Get document to find tenant ID
-	doc, err := s.docRepo.GetByID(ctx, id)
+	tenant, err := authedTenant(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Verify the document belongs to the authenticated tenant
+	doc, err := s.docRepo.GetByID(ctx, tenant.ID, id)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return nil, status.Error(codes.NotFound, "document not found")
@@ -315,17 +312,20 @@ func (s *DocumentService) DeleteDocument(ctx context.Context, req *ragv1.DeleteD
 	}
 
 	// Delete vectors from vector store
-	if err := s.engine.DeleteDocument(ctx, doc.TenantID.String(), doc.ID.String()); err != nil {
+	if err := s.engine.DeleteDocument(ctx, tenant.ID.String(), doc.ID.String()); err != nil {
 		slog.Warn("failed to delete vectors", "error", err, "doc_id", doc.ID)
 	}
 
 	// Delete chunks from repository
-	if err := s.docRepo.DeleteChunks(ctx, id); err != nil {
+	if err := s.docRepo.DeleteChunks(ctx, tenant.ID, id); err != nil {
 		slog.Warn("failed to delete chunks", "error", err, "doc_id", doc.ID)
 	}
 
 	// Delete document
-	if err := s.docRepo.Delete(ctx, id); err != nil {
+	if err := s.docRepo.Delete(ctx, tenant.ID, id); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, status.Error(codes.NotFound, "document not found")
+		}
 		return nil, status.Errorf(codes.Internal, "failed to delete document: %v", err)
 	}
 
@@ -360,7 +360,12 @@ func (s *DocumentService) GetDocumentChunks(ctx context.Context, req *ragv1.GetD
 		}
 	}
 
-	chunks, err := s.docRepo.GetChunks(ctx, docID, pageSize, offset)
+	tenant, err := authedTenant(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	chunks, err := s.docRepo.GetChunks(ctx, tenant.ID, docID, pageSize, offset)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get chunks: %v", err)
 	}
@@ -383,7 +388,7 @@ func (s *DocumentService) GetDocumentChunks(ctx context.Context, req *ragv1.GetD
 
 // ingestedToDocumentChunks converts engine-ingested chunks to repository
 // DocumentChunks, preserving the chunk IDs used as vector point IDs.
-func ingestedToDocumentChunks(chunks []ragcore.IngestedChunk, documentID uuid.UUID) []*repository.DocumentChunk {
+func ingestedToDocumentChunks(chunks []ragcore.IngestedChunk, tenantID, documentID uuid.UUID) []*repository.DocumentChunk {
 	docChunks := make([]*repository.DocumentChunk, len(chunks))
 	now := time.Now()
 
@@ -395,6 +400,7 @@ func ingestedToDocumentChunks(chunks []ragcore.IngestedChunk, documentID uuid.UU
 		docChunks[i] = &repository.DocumentChunk{
 			ID:         id,
 			DocumentID: documentID,
+			TenantID:   tenantID,
 			ChunkIndex: c.Index,
 			Content:    c.Content,
 			Metadata:   c.Metadata,
@@ -429,7 +435,7 @@ func (s *DocumentService) processDocument(ctx context.Context, doc *repository.D
 		Contextual: tenant.Config.ContextualRetrievalEnabled,
 		Model:      tenant.Config.LLMModel,
 	}, func(chunks []ragcore.IngestedChunk) error {
-		docChunks := ingestedToDocumentChunks(chunks, doc.ID)
+		docChunks := ingestedToDocumentChunks(chunks, doc.TenantID, doc.ID)
 		if err := s.docRepo.CreateChunks(ctx, docChunks); err != nil {
 			return fmt.Errorf("failed to store chunks: %w", err)
 		}

@@ -108,7 +108,7 @@ func run() error {
 	// Initialize services
 	tenantSvc := service.NewTenantService(tenantRepo, engine, cfg)
 	documentSvc := service.NewDocumentService(documentRepo, tenantRepo, engine)
-	ragSvc := service.NewRAGService(tenantRepo, engine)
+	ragSvc := service.NewRAGService(engine)
 
 	// Create gRPC server
 	grpcServer, err := server.NewGRPCServer(server.GRPCServerConfig{

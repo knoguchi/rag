@@ -24,10 +24,9 @@ const (
 )
 
 type QueryRequest struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	TenantId string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	Query    string                 `protobuf:"bytes,2,opt,name=query,proto3" json:"query,omitempty"`
-	Options  *QueryOptions          `protobuf:"bytes,3,opt,name=options,proto3" json:"options,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Query   string                 `protobuf:"bytes,2,opt,name=query,proto3" json:"query,omitempty"`
+	Options *QueryOptions          `protobuf:"bytes,3,opt,name=options,proto3" json:"options,omitempty"`
 	// Session ID for conversation memory (optional).
 	// If provided, the system will remember previous exchanges in this session.
 	// If empty, the query is treated as stateless (no memory).
@@ -64,13 +63,6 @@ func (x *QueryRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use QueryRequest.ProtoReflect.Descriptor instead.
 func (*QueryRequest) Descriptor() ([]byte, []int) {
 	return file_rag_v1_rag_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *QueryRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *QueryRequest) GetQuery() string {
@@ -599,7 +591,6 @@ func (x *StreamError) GetMessage() string {
 
 type RetrieveRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	Query         string                 `protobuf:"bytes,2,opt,name=query,proto3" json:"query,omitempty"`
 	Options       *RetrieveOptions       `protobuf:"bytes,3,opt,name=options,proto3" json:"options,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -634,13 +625,6 @@ func (x *RetrieveRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use RetrieveRequest.ProtoReflect.Descriptor instead.
 func (*RetrieveRequest) Descriptor() ([]byte, []int) {
 	return file_rag_v1_rag_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *RetrieveRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *RetrieveRequest) GetQuery() string {
@@ -839,13 +823,12 @@ var File_rag_v1_rag_proto protoreflect.FileDescriptor
 
 const file_rag_v1_rag_proto_rawDesc = "" +
 	"\n" +
-	"\x10rag/v1/rag.proto\x12\x06rag.v1\x1a\x1cgoogle/api/annotations.proto\x1a.protoc-gen-openapiv2/options/annotations.proto\"\x90\x01\n" +
-	"\fQueryRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x14\n" +
+	"\x10rag/v1/rag.proto\x12\x06rag.v1\x1a\x1cgoogle/api/annotations.proto\x1a.protoc-gen-openapiv2/options/annotations.proto\"\x84\x01\n" +
+	"\fQueryRequest\x12\x14\n" +
 	"\x05query\x18\x02 \x01(\tR\x05query\x12.\n" +
 	"\aoptions\x18\x03 \x01(\v2\x14.rag.v1.QueryOptionsR\aoptions\x12\x1d\n" +
 	"\n" +
-	"session_id\x18\x04 \x01(\tR\tsessionId\"\xa6\x01\n" +
+	"session_id\x18\x04 \x01(\tR\tsessionIdJ\x04\b\x01\x10\x02R\ttenant_id\"\xa6\x01\n" +
 	"\fQueryOptions\x12\x13\n" +
 	"\x05top_k\x18\x01 \x01(\x05R\x04topK\x12\x1b\n" +
 	"\tmin_score\x18\x02 \x01(\x02R\bminScore\x12#\n" +
@@ -885,11 +868,10 @@ const file_rag_v1_rag_proto_rawDesc = "" +
 	"\x05event\";\n" +
 	"\vStreamError\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"w\n" +
-	"\x0fRetrieveRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x14\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"k\n" +
+	"\x0fRetrieveRequest\x12\x14\n" +
 	"\x05query\x18\x02 \x01(\tR\x05query\x121\n" +
-	"\aoptions\x18\x03 \x01(\v2\x17.rag.v1.RetrieveOptionsR\aoptions\"f\n" +
+	"\aoptions\x18\x03 \x01(\v2\x17.rag.v1.RetrieveOptionsR\aoptionsJ\x04\b\x01\x10\x02R\ttenant_id\"f\n" +
 	"\x0fRetrieveOptions\x12\x13\n" +
 	"\x05top_k\x18\x01 \x01(\x05R\x04topK\x12\x1b\n" +
 	"\tmin_score\x18\x02 \x01(\x02R\bminScore\x12!\n" +

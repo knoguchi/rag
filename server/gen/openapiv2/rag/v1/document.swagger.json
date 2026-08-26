@@ -42,12 +42,6 @@
         },
         "parameters": [
           {
-            "name": "tenantId",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
             "name": "pageSize",
             "in": "query",
             "required": false,
@@ -396,9 +390,6 @@
     "v1IngestDocumentRequest": {
       "type": "object",
       "properties": {
-        "tenantId": {
-          "type": "string"
-        },
         "content": {
           "type": "string",
           "title": "Raw text content"
@@ -433,9 +424,6 @@
     "v1IngestURLRequest": {
       "type": "object",
       "properties": {
-        "tenantId": {
-          "type": "string"
-        },
         "url": {
           "type": "string"
         },
