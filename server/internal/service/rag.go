@@ -189,8 +189,9 @@ func (s *RAGService) Retrieve(ctx context.Context, req *ragv1.RetrieveRequest) (
 	}
 
 	options := ragcore.Options{
-		TopK:     tenant.Config.TopK,
-		MinScore: tenant.Config.MinScore,
+		TopK:          tenant.Config.TopK,
+		MinScore:      tenant.Config.MinScore,
+		HybridEnabled: tenant.Config.HybridEnabled,
 	}
 	var documentIDs []string
 	if req.Options != nil {

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"strings"
+	"sync"
 
 	"github.com/qdrant/go-client/qdrant"
 )
@@ -18,6 +20,10 @@ const (
 // QdrantStore implements VectorStore using Qdrant
 type QdrantStore struct {
 	client *qdrant.Client
+
+	// namedVectors caches which collections use named (hybrid) vectors, so
+	// dense searches know whether to address the "dense" vector by name.
+	namedVectors sync.Map // collection name -> bool
 }
 
 // NewQdrantStore creates a new Qdrant vector store client
@@ -97,6 +103,7 @@ func (s *QdrantStore) CreateHybridCollection(ctx context.Context, namespace stri
 	if err != nil {
 		return fmt.Errorf("failed to create hybrid collection: %w", err)
 	}
+	s.namedVectors.Store(name, true)
 
 	return nil
 }
@@ -186,17 +193,31 @@ func (s *QdrantStore) Upsert(ctx context.Context, namespace string, chunks []Chu
 	return nil
 }
 
-// Search performs similarity search
+// Search performs similarity search using dense vectors. It works against
+// both legacy single-vector collections (unnamed vector) and hybrid
+// collections (named "dense" vector).
 func (s *QdrantStore) Search(ctx context.Context, namespace string, vector []float32, topK int, minScore float32) ([]SearchResult, error) {
 	name := s.collectionName(namespace)
 
-	response, err := s.client.Query(ctx, &qdrant.QueryPoints{
+	query := &qdrant.QueryPoints{
 		CollectionName: name,
 		Query:          qdrant.NewQuery(vector...),
 		Limit:          qdrant.PtrOf(uint64(topK)),
 		WithPayload:    qdrant.NewWithPayload(true),
 		ScoreThreshold: qdrant.PtrOf(float32(minScore)),
-	})
+	}
+	if named, ok := s.namedVectors.Load(name); ok && named.(bool) {
+		query.Using = qdrant.PtrOf(denseVectorName)
+	}
+
+	response, err := s.client.Query(ctx, query)
+	if err != nil && query.Using == nil && strings.Contains(err.Error(), "vector name") {
+		// Hybrid collection: retry addressing the dense vector by name and
+		// remember for next time
+		s.namedVectors.Store(name, true)
+		query.Using = qdrant.PtrOf(denseVectorName)
+		response, err = s.client.Query(ctx, query)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to search: %w", err)
 	}

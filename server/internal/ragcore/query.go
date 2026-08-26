@@ -13,6 +13,10 @@ import (
 // retrieve runs the retrieval half of the pipeline: embed -> (hybrid) search
 // -> dedupe -> rerank -> truncate to TopK.
 func (e *Engine) retrieve(ctx context.Context, namespace, query string, opts Options) ([]vectorstore.SearchResult, error) {
+	if opts.TopK <= 0 {
+		opts.TopK = 4
+	}
+
 	queryVector, err := e.embedder.Embed(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to embed query: %w", err)
@@ -213,18 +217,14 @@ func (e *Engine) QueryStream(ctx context.Context, namespace, query string, opts 
 }
 
 // Retrieve returns relevant chunks without LLM generation. documentIDs, when
-// non-empty, filters results to those documents.
+// non-empty, filters results to those documents. It shares the hybrid-aware
+// retrieval pipeline (search + dedupe + optional rerank) with Query.
 func (e *Engine) Retrieve(ctx context.Context, namespace, query string, opts Options, documentIDs []string) (*RetrieveResult, error) {
 	startTime := time.Now()
 
-	queryVector, err := e.embedder.Embed(ctx, query)
+	results, err := e.retrieve(ctx, namespace, query, opts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to embed query: %w", err)
-	}
-
-	results, err := e.store.Search(ctx, namespace, queryVector, opts.TopK, opts.MinScore)
-	if err != nil {
-		return nil, fmt.Errorf("search failed: %w", err)
+		return nil, err
 	}
 
 	if len(documentIDs) > 0 {
