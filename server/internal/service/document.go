@@ -48,6 +48,15 @@ func NewDocumentService(
 	}
 }
 
+// ingestTimeout bounds async document processing. Contextual ingestion runs
+// one LLM call per chunk, so it gets a much larger budget.
+func ingestTimeout(tenant *repository.Tenant) time.Duration {
+	if tenant.Config.ContextualRetrievalEnabled {
+		return 30 * time.Minute
+	}
+	return 10 * time.Minute
+}
+
 // Shutdown waits for all in-flight document processing goroutines to complete.
 func (s *DocumentService) Shutdown(ctx context.Context) error {
 	done := make(chan struct{})
@@ -143,7 +152,7 @@ func (s *DocumentService) IngestDocument(ctx context.Context, req *ragv1.IngestD
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+		ctx, cancel := context.WithTimeout(context.Background(), ingestTimeout(tenant))
 		defer cancel()
 		s.processDocument(ctx, doc, req.Content, tenant)
 	}()
@@ -198,7 +207,7 @@ func (s *DocumentService) IngestURL(ctx context.Context, req *ragv1.IngestURLReq
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+		ctx, cancel := context.WithTimeout(context.Background(), ingestTimeout(tenant))
 		defer cancel()
 		s.processURL(ctx, doc, req.Url, req.UseHeadless, tenant)
 	}()
@@ -415,8 +424,10 @@ func (s *DocumentService) processDocument(ctx context.Context, doc *repository.D
 			"source": doc.Source,
 			"title":  doc.Title,
 		},
-		Chunker: tenant.Config.Chunker,
-		Hybrid:  tenant.Config.HybridEnabled,
+		Chunker:    tenant.Config.Chunker,
+		Hybrid:     tenant.Config.HybridEnabled,
+		Contextual: tenant.Config.ContextualRetrievalEnabled,
+		Model:      tenant.Config.LLMModel,
 	}, func(chunks []ragcore.IngestedChunk) error {
 		docChunks := ingestedToDocumentChunks(chunks, doc.ID)
 		if err := s.docRepo.CreateChunks(ctx, docChunks); err != nil {

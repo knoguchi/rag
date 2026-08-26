@@ -24,6 +24,11 @@ type IngestInput struct {
 	// namespaces created with hybrid support; must be false for legacy
 	// dense-only namespaces.
 	Hybrid bool
+	// Contextual generates a short situating context per chunk (one LLM
+	// call each) that is embedded with the chunk. Slow on local LLMs.
+	Contextual bool
+	// Model is the LLM used for contextual ingestion.
+	Model string
 }
 
 // IngestedChunk is a chunk produced by ingestion, returned so the caller can
@@ -66,6 +71,12 @@ func (e *Engine) Ingest(ctx context.Context, in IngestInput, persist func([]Inge
 		}
 	}
 
+	if in.Contextual {
+		// Runs before persist so the situating context lands in the
+		// caller's store too (enables reindexing without re-running it)
+		e.contextualize(ctx, in.Content, in.Model, chunks)
+	}
+
 	if persist != nil {
 		if err := persist(chunks); err != nil {
 			return nil, err
@@ -87,9 +98,10 @@ func (e *Engine) IndexChunks(ctx context.Context, namespace, documentID string, 
 		return nil
 	}
 
+	// Embed the situating context (when present) together with the content
 	contents := make([]string, len(chunks))
 	for i, c := range chunks {
-		contents[i] = c.Content
+		contents[i] = embedText(c)
 	}
 	embeddings, err := e.embedder.EmbedBatch(ctx, contents)
 	if err != nil {
@@ -109,7 +121,7 @@ func (e *Engine) IndexChunks(ctx context.Context, namespace, documentID string, 
 
 		var sparse *vectorstore.SparseVector
 		if hybrid && e.sparse != nil {
-			sparse = e.sparse.Vectorize(c.Content)
+			sparse = e.sparse.Vectorize(embedText(c))
 		}
 
 		vectorChunks[i] = vectorstore.Chunk{

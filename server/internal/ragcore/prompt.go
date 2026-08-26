@@ -36,6 +36,10 @@ func buildRAGPrompt(systemPrompt string, chunks []RetrievedChunk, query string, 
 			sb.WriteString(fmt.Sprintf(" (Source: %s)", chunk.Source))
 		}
 		sb.WriteString("\n")
+		if chunk.Context != "" {
+			sb.WriteString(chunk.Context)
+			sb.WriteString("\n")
+		}
 		sb.WriteString(chunk.Content)
 		sb.WriteString("\n\n")
 	}

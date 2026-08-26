@@ -27,10 +27,13 @@ type RetrievedChunk struct {
 	ID         string
 	DocumentID string
 	Content    string
-	Score      float32
-	Source     string
-	Title      string
-	Metadata   map[string]string
+	// Context is the LLM-generated situating context from contextual
+	// ingestion, when the chunk was ingested with it.
+	Context  string
+	Score    float32
+	Source   string
+	Title    string
+	Metadata map[string]string
 }
 
 // Timings captures pipeline latencies.

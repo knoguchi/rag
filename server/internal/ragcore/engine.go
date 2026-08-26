@@ -31,6 +31,8 @@ type Engine struct {
 	sparse   SparseVectorizer  // optional; required for hybrid search
 	rewriter *Rewriter         // optional; conversation-aware query rewriting
 	memory   *memory.Store
+
+	contextualConcurrency int // concurrent situating calls during ingestion
 }
 
 // Option is a functional option for configuring the Engine.
@@ -49,6 +51,12 @@ func WithSparseVectorizer(sv SparseVectorizer) Option {
 // WithRewriter enables conversation-aware query rewriting before retrieval.
 func WithRewriter(r *Rewriter) Option {
 	return func(e *Engine) { e.rewriter = r }
+}
+
+// WithContextualConcurrency bounds concurrent per-chunk situating LLM calls
+// during contextual ingestion (default 2).
+func WithContextualConcurrency(n int) Option {
+	return func(e *Engine) { e.contextualConcurrency = n }
 }
 
 // WithMemory sets the conversation memory store.

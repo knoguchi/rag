@@ -89,6 +89,7 @@ func toRetrievedChunk(r vectorstore.SearchResult) RetrievedChunk {
 		ID:         r.ID,
 		DocumentID: r.DocumentID,
 		Content:    r.Content,
+		Context:    r.Metadata["context"],
 		Score:      r.Score,
 		Source:     r.Metadata["source"],
 		Title:      r.Metadata["title"],

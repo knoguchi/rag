@@ -7,6 +7,8 @@
 //
 //	ragreindex --tenant <uuid>   reindex one tenant
 //	ragreindex --all             reindex every tenant
+//	--contextual                 also generate situating context for chunks
+//	                             that lack one (one LLM call per chunk)
 package main
 
 import (
@@ -15,6 +17,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/knoguchi/rag/internal/config"
@@ -30,6 +33,7 @@ import (
 func main() {
 	tenantFlag := flag.String("tenant", "", "tenant UUID to reindex")
 	allFlag := flag.Bool("all", false, "reindex all tenants")
+	contextualFlag := flag.Bool("contextual", false, "generate situating context for chunks that lack one")
 	flag.Parse()
 
 	if (*tenantFlag == "") == !*allFlag {
@@ -39,13 +43,13 @@ func main() {
 
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, nil)))
 
-	if err := run(*tenantFlag, *allFlag); err != nil {
+	if err := run(*tenantFlag, *allFlag, *contextualFlag); err != nil {
 		slog.Error("reindex failed", "error", err)
 		os.Exit(1)
 	}
 }
 
-func run(tenantID string, all bool) error {
+func run(tenantID string, all, contextual bool) error {
 	ctx := context.Background()
 
 	cfg, err := config.Load()
@@ -102,7 +106,7 @@ func run(tenantID string, all bool) error {
 	}
 
 	for _, tenant := range tenants {
-		if err := reindexTenant(ctx, engine, tenantRepo, docRepo, tenant); err != nil {
+		if err := reindexTenant(ctx, engine, tenantRepo, docRepo, tenant, contextual); err != nil {
 			return fmt.Errorf("tenant %s: %w", tenant.ID, err)
 		}
 	}
@@ -116,6 +120,7 @@ func reindexTenant(
 	tenantRepo repository.TenantRepository,
 	docRepo repository.DocumentRepository,
 	tenant *repository.Tenant,
+	contextual bool,
 ) error {
 	ns := tenant.ID.String()
 	slog.Info("reindexing tenant", "tenant_id", ns, "name", tenant.Name)
@@ -146,7 +151,7 @@ func reindexTenant(
 		}
 
 		for _, doc := range docs {
-			if err := reindexDocument(ctx, engine, docRepo, tenant, doc); err != nil {
+			if err := reindexDocument(ctx, engine, docRepo, tenant, doc, contextual); err != nil {
 				return fmt.Errorf("document %s: %w", doc.ID, err)
 			}
 		}
@@ -158,6 +163,9 @@ func reindexTenant(
 
 	// Flip the tenant to hybrid retrieval
 	tenant.Config.HybridEnabled = true
+	if contextual {
+		tenant.Config.ContextualRetrievalEnabled = true
+	}
 	if err := tenantRepo.Update(ctx, tenant); err != nil {
 		return fmt.Errorf("failed to enable hybrid on tenant: %w", err)
 	}
@@ -172,6 +180,7 @@ func reindexDocument(
 	docRepo repository.DocumentRepository,
 	tenant *repository.Tenant,
 	doc *repository.Document,
+	contextual bool,
 ) error {
 	const chunkPage = 500
 	var chunks []ragcore.IngestedChunk
@@ -191,6 +200,31 @@ func reindexDocument(
 		}
 		if len(stored) < chunkPage {
 			break
+		}
+	}
+
+	if contextual {
+		// The original document isn't stored; approximate it by
+		// concatenating the chunks (they cover the document in order).
+		var docText strings.Builder
+		for _, c := range chunks {
+			if docText.Len() > 4000 {
+				break
+			}
+			docText.WriteString(c.Content)
+			docText.WriteString("\n")
+		}
+		var missing []ragcore.IngestedChunk
+		idx := make([]int, 0, len(chunks))
+		for i, c := range chunks {
+			if c.Metadata["context"] == "" {
+				missing = append(missing, c)
+				idx = append(idx, i)
+			}
+		}
+		engine.Contextualize(ctx, docText.String(), tenant.Config.LLMModel, missing)
+		for j, i := range idx {
+			chunks[i] = missing[j]
 		}
 	}
 
