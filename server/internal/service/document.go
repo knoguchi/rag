@@ -176,17 +176,21 @@ func (s *DocumentService) IngestURL(ctx context.Context, req *ragv1.IngestURLReq
 	}
 	tenantID := tenant.ID
 
-	// Create document record first with PENDING status
+	// Create document record first with PENDING status. The content hash is
+	// a unique per-document placeholder until the URL is fetched — an empty
+	// hash would collide on UNIQUE(tenant_id, content_hash) with concurrent
+	// or previously interrupted URL ingests.
 	now := time.Now()
 	docID := uuid.New()
 	doc := &repository.Document{
-		ID:        docID,
-		TenantID:  tenantID,
-		Source:    req.Url,
-		Status:    "PENDING",
-		Metadata:  req.Metadata,
-		CreatedAt: now,
-		UpdatedAt: now,
+		ID:          docID,
+		TenantID:    tenantID,
+		Source:      req.Url,
+		ContentHash: hashContent("pending:" + docID.String()),
+		Status:      "PENDING",
+		Metadata:    req.Metadata,
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}
 
 	if err := s.docRepo.Create(ctx, doc); err != nil {
