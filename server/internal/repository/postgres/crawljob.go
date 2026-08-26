@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/knoguchi/rag/internal/ids"
 	"github.com/knoguchi/rag/internal/repository"
 )
 
@@ -43,7 +43,7 @@ func (r *CrawlJobRepo) Create(ctx context.Context, job *repository.CrawlJob) err
 }
 
 // GetByID retrieves a crawl job by ID
-func (r *CrawlJobRepo) GetByID(ctx context.Context, id uuid.UUID) (*repository.CrawlJob, error) {
+func (r *CrawlJobRepo) GetByID(ctx context.Context, id ids.ID) (*repository.CrawlJob, error) {
 	query := `
 		SELECT id, tenant_id, type, status, root_url, config, pages_crawled, pages_total, pages_failed, error_message, created_at, started_at, completed_at
 		FROM crawl_jobs
@@ -72,7 +72,7 @@ func (r *CrawlJobRepo) GetByID(ctx context.Context, id uuid.UUID) (*repository.C
 }
 
 // List retrieves crawl jobs for a tenant with pagination
-func (r *CrawlJobRepo) List(ctx context.Context, tenantID uuid.UUID, status string, limit, offset int) ([]*repository.CrawlJob, int, error) {
+func (r *CrawlJobRepo) List(ctx context.Context, tenantID ids.ID, status string, limit, offset int) ([]*repository.CrawlJob, int, error) {
 	// Build query with optional status filter
 	countQuery := `SELECT COUNT(*) FROM crawl_jobs WHERE tenant_id = $1`
 	listQuery := `
@@ -184,7 +184,7 @@ func (r *CrawlJobRepo) UpdatePage(ctx context.Context, page *repository.CrawledP
 }
 
 // GetPages retrieves pages for a crawl job
-func (r *CrawlJobRepo) GetPages(ctx context.Context, jobID uuid.UUID, status string, limit, offset int) ([]*repository.CrawledPage, int, error) {
+func (r *CrawlJobRepo) GetPages(ctx context.Context, jobID ids.ID, status string, limit, offset int) ([]*repository.CrawledPage, int, error) {
 	// Build query with optional status filter
 	countQuery := `SELECT COUNT(*) FROM crawled_pages WHERE job_id = $1`
 	listQuery := `

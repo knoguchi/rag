@@ -102,7 +102,7 @@ func (s *RAGService) Query(ctx context.Context, req *ragv1.QueryRequest) (*ragv1
 
 	options := buildOptions(tenant, req.Options, req.SessionId)
 
-	result, err := s.engine.Query(ctx, tenant.ID.String(), req.Query, options)
+	result, err := s.engine.Query(ctx, tenant.ID.UUIDString(), req.Query, options)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "%v", err)
 	}
@@ -138,7 +138,7 @@ func (s *RAGService) QueryStream(req *ragv1.QueryRequest, stream grpc.ServerStre
 
 	options := buildOptions(tenant, req.Options, req.SessionId)
 
-	err = s.engine.QueryStream(ctx, tenant.ID.String(), req.Query, options, func(ev ragcore.StreamEvent) error {
+	err = s.engine.QueryStream(ctx, tenant.ID.UUIDString(), req.Query, options, func(ev ragcore.StreamEvent) error {
 		switch {
 		case ev.Source != nil:
 			return stream.Send(&ragv1.QueryStreamResponse{
@@ -206,14 +206,14 @@ func (s *RAGService) Retrieve(ctx context.Context, req *ragv1.RetrieveRequest) (
 		documentIDs = make([]string, 0, len(req.Options.DocumentIds))
 		for _, d := range req.Options.DocumentIds {
 			if parsed, err := ids.Parse(d); err == nil {
-				documentIDs = append(documentIDs, parsed.String())
+				documentIDs = append(documentIDs, parsed.UUIDString())
 			} else {
 				documentIDs = append(documentIDs, d)
 			}
 		}
 	}
 
-	result, err := s.engine.Retrieve(ctx, tenant.ID.String(), req.Query, options, documentIDs)
+	result, err := s.engine.Retrieve(ctx, tenant.ID.UUIDString(), req.Query, options, documentIDs)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "%v", err)
 	}

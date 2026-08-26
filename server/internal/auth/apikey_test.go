@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/uuid"
+	"github.com/knoguchi/rag/internal/ids"
 	"github.com/knoguchi/rag/internal/repository"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -26,16 +26,16 @@ func (m *mockTenantRepo) GetByAPIKey(_ context.Context, apiKey string) (*reposit
 }
 
 func (m *mockTenantRepo) Create(context.Context, *repository.Tenant, string) error { return nil }
-func (m *mockTenantRepo) GetByID(context.Context, uuid.UUID) (*repository.Tenant, error) {
+func (m *mockTenantRepo) GetByID(context.Context, ids.ID) (*repository.Tenant, error) {
 	return nil, repository.ErrNotFound
 }
 func (m *mockTenantRepo) List(context.Context, int, int) ([]*repository.Tenant, int, error) {
 	return nil, 0, nil
 }
-func (m *mockTenantRepo) Update(context.Context, *repository.Tenant) error      { return nil }
-func (m *mockTenantRepo) Delete(context.Context, uuid.UUID) error               { return nil }
-func (m *mockTenantRepo) UpdateAPIKey(context.Context, uuid.UUID, string) error { return nil }
-func (m *mockTenantRepo) UpdateUsage(context.Context, uuid.UUID, repository.TenantUsage) error {
+func (m *mockTenantRepo) Update(context.Context, *repository.Tenant) error   { return nil }
+func (m *mockTenantRepo) Delete(context.Context, ids.ID) error               { return nil }
+func (m *mockTenantRepo) UpdateAPIKey(context.Context, ids.ID, string) error { return nil }
+func (m *mockTenantRepo) UpdateUsage(context.Context, ids.ID, repository.TenantUsage) error {
 	return nil
 }
 func (m *mockTenantRepo) ListExpired(context.Context) ([]*repository.Tenant, error) {
@@ -43,7 +43,7 @@ func (m *mockTenantRepo) ListExpired(context.Context) ([]*repository.Tenant, err
 }
 
 func newTestInterceptor() (*APIKeyInterceptor, *repository.Tenant) {
-	tenantID := uuid.New()
+	tenantID := ids.New()
 	tenant := &repository.Tenant{
 		ID:        tenantID,
 		Name:      "test-tenant",
@@ -234,7 +234,7 @@ func TestRequireTenant_NotInContext(t *testing.T) {
 }
 
 func TestRequireTenant_InContext(t *testing.T) {
-	tenant := &TenantInfo{ID: uuid.New(), Name: "test"}
+	tenant := &TenantInfo{ID: ids.New(), Name: "test"}
 	ctx := context.WithValue(context.Background(), tenantContextKey, tenant)
 	got, err := RequireTenant(ctx)
 	if err != nil {

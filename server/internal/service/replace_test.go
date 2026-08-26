@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/uuid"
 	ragv1 "github.com/knoguchi/rag/gen/rag/v1"
 	"github.com/knoguchi/rag/internal/ids"
 	"github.com/knoguchi/rag/internal/ragcore"
@@ -15,8 +14,8 @@ import (
 // replaceFakeRepo tracks documents in memory and records deletions.
 type replaceFakeRepo struct {
 	fakeDocRepo
-	docs    map[uuid.UUID]*repository.Document
-	deleted []uuid.UUID
+	docs    map[ids.ID]*repository.Document
+	deleted []ids.ID
 }
 
 func (f *replaceFakeRepo) Create(_ context.Context, doc *repository.Document) error {
@@ -25,7 +24,7 @@ func (f *replaceFakeRepo) Create(_ context.Context, doc *repository.Document) er
 	return nil
 }
 
-func (f *replaceFakeRepo) GetByHash(_ context.Context, tenantID uuid.UUID, hash string) (*repository.Document, error) {
+func (f *replaceFakeRepo) GetByHash(_ context.Context, tenantID ids.ID, hash string) (*repository.Document, error) {
 	for _, d := range f.docs {
 		if d.TenantID == tenantID && d.ContentHash == hash {
 			return d, nil
@@ -34,7 +33,7 @@ func (f *replaceFakeRepo) GetByHash(_ context.Context, tenantID uuid.UUID, hash 
 	return nil, repository.ErrNotFound
 }
 
-func (f *replaceFakeRepo) ListBySource(_ context.Context, tenantID uuid.UUID, source string) ([]*repository.Document, error) {
+func (f *replaceFakeRepo) ListBySource(_ context.Context, tenantID ids.ID, source string) ([]*repository.Document, error) {
 	var out []*repository.Document
 	for _, d := range f.docs {
 		if d.TenantID == tenantID && d.Source == source {
@@ -44,7 +43,7 @@ func (f *replaceFakeRepo) ListBySource(_ context.Context, tenantID uuid.UUID, so
 	return out, nil
 }
 
-func (f *replaceFakeRepo) Delete(_ context.Context, tenantID, id uuid.UUID) error {
+func (f *replaceFakeRepo) Delete(_ context.Context, tenantID, id ids.ID) error {
 	if d, ok := f.docs[id]; !ok || d.TenantID != tenantID {
 		return repository.ErrNotFound
 	}
@@ -53,7 +52,7 @@ func (f *replaceFakeRepo) Delete(_ context.Context, tenantID, id uuid.UUID) erro
 	return nil
 }
 
-func (f *replaceFakeRepo) DeleteChunks(context.Context, uuid.UUID, uuid.UUID) error { return nil }
+func (f *replaceFakeRepo) DeleteChunks(context.Context, ids.ID, ids.ID) error { return nil }
 
 func (f *replaceFakeRepo) Update(_ context.Context, doc *repository.Document) error {
 	cp := *doc
@@ -85,8 +84,8 @@ func (nullVectorStore) Delete(context.Context, string, string) error            
 func (nullVectorStore) CreateCollection(context.Context, string, int) error       { return nil }
 
 func TestIngest_ReplacesStaleDocumentForSameSource(t *testing.T) {
-	tenantID := uuid.New()
-	repo := &replaceFakeRepo{docs: map[uuid.UUID]*repository.Document{}}
+	tenantID := ids.New()
+	repo := &replaceFakeRepo{docs: map[ids.ID]*repository.Document{}}
 	engine := ragcore.New(nullEmbedder{}, nil, nullVectorStore{})
 	defer engine.Close()
 	svc := NewDocumentService(repo, &fakeTenantRepo{}, engine)

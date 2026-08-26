@@ -22,34 +22,29 @@ func TestRoundTrip(t *testing.T) {
 	}
 }
 
-func TestParse_AcceptsUUID(t *testing.T) {
-	id := uuid.New()
-	back, err := Parse(id.String())
-	if err != nil {
-		t.Fatalf("parse failed: %v", err)
+func TestParse_AcceptsUUIDAndLowercase(t *testing.T) {
+	id := New()
+
+	back, err := Parse(id.UUIDString())
+	if err != nil || back != id {
+		t.Fatalf("uuid-form parse failed: %v (%s)", err, back)
 	}
-	if back != id {
-		t.Errorf("expected %s, got %s", id, back)
+
+	back, err = Parse(strings.ToLower(id.String()))
+	if err != nil || back != id {
+		t.Fatalf("lowercase parse failed: %v (%s)", err, back)
 	}
 }
 
-func TestParse_AcceptsLowercaseULID(t *testing.T) {
+func TestUUIDStringRoundTrip(t *testing.T) {
 	id := New()
-	back, err := Parse(Format(id)[:26])
-	if err != nil {
-		t.Fatalf("parse failed: %v", err)
+	u := id.UUIDString()
+	if _, err := uuid.Parse(u); err != nil {
+		t.Fatalf("UUIDString not a UUID: %v", err)
 	}
-	if back != id {
-		t.Error("uppercase parse mismatch")
-	}
-	// lowercase form also accepted
-	low := strings.ToLower(Format(id))
-	back2, err := Parse(low)
-	if err != nil {
-		t.Fatalf("lowercase parse failed: %v", err)
-	}
-	if back2 != id {
-		t.Error("lowercase parse mismatch")
+	back, err := ParseUUIDString(u)
+	if err != nil || back != id {
+		t.Fatalf("uuid round trip failed: %v", err)
 	}
 }
 
@@ -65,8 +60,8 @@ func TestFormatString_PassThrough(t *testing.T) {
 	if got := FormatString("not-an-id"); got != "not-an-id" {
 		t.Errorf("expected pass-through, got %q", got)
 	}
-	id := uuid.New()
-	if got := FormatString(id.String()); len(got) != 26 {
-		t.Errorf("expected ULID form, got %q", got)
+	id := New()
+	if got := FormatString(id.UUIDString()); got != id.String() {
+		t.Errorf("expected %s, got %q", id.String(), got)
 	}
 }

@@ -249,7 +249,7 @@ func runRetentionReaper(ctx context.Context, tenantRepo repository.TenantReposit
 			slog.Info("reaping expired tenant",
 				"tenant_id", tenant.ID, "name", tenant.Name,
 				"retention_days", tenant.Config.RetentionDays)
-			if err := engine.DeleteNamespace(ctx, tenant.ID.String()); err != nil {
+			if err := engine.DeleteNamespace(ctx, tenant.ID.UUIDString()); err != nil {
 				slog.Warn("failed to delete expired tenant's vectors", "error", err, "tenant_id", tenant.ID)
 			}
 			if err := tenantRepo.Delete(ctx, tenant.ID); err != nil {

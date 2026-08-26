@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/uuid"
 	ragv1 "github.com/knoguchi/rag/gen/rag/v1"
 	"github.com/knoguchi/rag/internal/config"
+	"github.com/knoguchi/rag/internal/ids"
 	"github.com/knoguchi/rag/internal/ragcore"
 	"github.com/knoguchi/rag/internal/repository"
 	"github.com/oklog/ulid/v2"
@@ -18,7 +18,7 @@ import (
 // signupFakeRepo stores created tenants by ID.
 type signupFakeRepo struct {
 	fakeTenantRepo
-	created map[uuid.UUID]*repository.Tenant
+	created map[ids.ID]*repository.Tenant
 }
 
 func (f *signupFakeRepo) Create(_ context.Context, t *repository.Tenant, _ string) error {
@@ -26,7 +26,7 @@ func (f *signupFakeRepo) Create(_ context.Context, t *repository.Tenant, _ strin
 	return nil
 }
 
-func (f *signupFakeRepo) GetByID(_ context.Context, id uuid.UUID) (*repository.Tenant, error) {
+func (f *signupFakeRepo) GetByID(_ context.Context, id ids.ID) (*repository.Tenant, error) {
 	if t, ok := f.created[id]; ok {
 		return t, nil
 	}
@@ -46,7 +46,7 @@ func signupTestConfig(enabled bool) *config.Config {
 }
 
 func newSignupService(enabled bool) (*TenantService, *signupFakeRepo) {
-	repo := &signupFakeRepo{created: map[uuid.UUID]*repository.Tenant{}}
+	repo := &signupFakeRepo{created: map[ids.ID]*repository.Tenant{}}
 	engine := ragcore.New(nullEmbedder{}, nil, nullVectorStore{})
 	return NewTenantService(repo, engine, signupTestConfig(enabled)), repo
 }
@@ -77,7 +77,7 @@ func TestSignup_CreatesTenantFromULID(t *testing.T) {
 	}
 
 	// The ULID's 128 bits become the tenant UUID
-	wantID := uuid.UUID(installID)
+	wantID := ids.ID(installID)
 	created, ok := repo.created[wantID]
 	if !ok {
 		t.Fatalf("expected tenant with ID %s derived from the ULID", wantID)

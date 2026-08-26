@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/knoguchi/rag/internal/ids"
 	"github.com/knoguchi/rag/internal/repository"
 )
 
@@ -43,7 +43,7 @@ func (r *DocumentRepo) Create(ctx context.Context, doc *repository.Document) err
 }
 
 // GetByID retrieves a document by ID, scoped to a tenant
-func (r *DocumentRepo) GetByID(ctx context.Context, tenantID, id uuid.UUID) (*repository.Document, error) {
+func (r *DocumentRepo) GetByID(ctx context.Context, tenantID, id ids.ID) (*repository.Document, error) {
 	query := `
 		SELECT id, tenant_id, source, title, content_hash, chunk_count, status, error_message, metadata, created_at, updated_at
 		FROM documents
@@ -53,7 +53,7 @@ func (r *DocumentRepo) GetByID(ctx context.Context, tenantID, id uuid.UUID) (*re
 }
 
 // GetByHash retrieves a document by content hash for a tenant
-func (r *DocumentRepo) GetByHash(ctx context.Context, tenantID uuid.UUID, hash string) (*repository.Document, error) {
+func (r *DocumentRepo) GetByHash(ctx context.Context, tenantID ids.ID, hash string) (*repository.Document, error) {
 	query := `
 		SELECT id, tenant_id, source, title, content_hash, chunk_count, status, error_message, metadata, created_at, updated_at
 		FROM documents
@@ -63,7 +63,7 @@ func (r *DocumentRepo) GetByHash(ctx context.Context, tenantID uuid.UUID, hash s
 }
 
 // ListBySource returns all documents for a tenant with the given source
-func (r *DocumentRepo) ListBySource(ctx context.Context, tenantID uuid.UUID, source string) ([]*repository.Document, error) {
+func (r *DocumentRepo) ListBySource(ctx context.Context, tenantID ids.ID, source string) ([]*repository.Document, error) {
 	query := `
 		SELECT id, tenant_id, source, title, content_hash, chunk_count, status, error_message, metadata, created_at, updated_at
 		FROM documents
@@ -119,7 +119,7 @@ func (r *DocumentRepo) scanDocument(ctx context.Context, query string, args ...a
 }
 
 // List retrieves documents for a tenant with pagination
-func (r *DocumentRepo) List(ctx context.Context, tenantID uuid.UUID, status string, limit, offset int) ([]*repository.Document, int, error) {
+func (r *DocumentRepo) List(ctx context.Context, tenantID ids.ID, status string, limit, offset int) ([]*repository.Document, int, error) {
 	// Build query with optional status filter
 	countQuery := `SELECT COUNT(*) FROM documents WHERE tenant_id = $1`
 	listQuery := `
@@ -197,7 +197,7 @@ func (r *DocumentRepo) Update(ctx context.Context, doc *repository.Document) err
 }
 
 // Delete deletes a document, scoped to a tenant
-func (r *DocumentRepo) Delete(ctx context.Context, tenantID, id uuid.UUID) error {
+func (r *DocumentRepo) Delete(ctx context.Context, tenantID, id ids.ID) error {
 	result, err := r.db.Pool.Exec(ctx, `DELETE FROM documents WHERE tenant_id = $1 AND id = $2`, tenantID, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete document: %w", err)
@@ -239,7 +239,7 @@ func (r *DocumentRepo) CreateChunks(ctx context.Context, chunks []*repository.Do
 }
 
 // GetChunks retrieves chunks for a document, scoped to a tenant
-func (r *DocumentRepo) GetChunks(ctx context.Context, tenantID, documentID uuid.UUID, limit, offset int) ([]*repository.DocumentChunk, error) {
+func (r *DocumentRepo) GetChunks(ctx context.Context, tenantID, documentID ids.ID, limit, offset int) ([]*repository.DocumentChunk, error) {
 	query := `
 		SELECT id, document_id, chunk_index, content, metadata, created_at
 		FROM document_chunks
@@ -272,7 +272,7 @@ func (r *DocumentRepo) GetChunks(ctx context.Context, tenantID, documentID uuid.
 }
 
 // DeleteChunks deletes all chunks for a document, scoped to a tenant
-func (r *DocumentRepo) DeleteChunks(ctx context.Context, tenantID, documentID uuid.UUID) error {
+func (r *DocumentRepo) DeleteChunks(ctx context.Context, tenantID, documentID ids.ID) error {
 	_, err := r.db.Pool.Exec(ctx, `DELETE FROM document_chunks WHERE tenant_id = $1 AND document_id = $2`, tenantID, documentID)
 	if err != nil {
 		return fmt.Errorf("failed to delete chunks: %w", err)

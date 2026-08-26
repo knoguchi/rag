@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	ragv1 "github.com/knoguchi/rag/gen/rag/v1"
 	"github.com/knoguchi/rag/internal/auth"
 	"github.com/knoguchi/rag/internal/config"
@@ -66,7 +65,7 @@ func (s *TenantService) CreateTenant(ctx context.Context, req *ragv1.CreateTenan
 	}
 
 	// Use custom ID if provided, otherwise generate a new one
-	var tenantID uuid.UUID
+	var tenantID ids.ID
 	if req.GetId() != "" {
 		var err error
 		tenantID, err = ids.Parse(req.GetId())
@@ -92,7 +91,7 @@ func (s *TenantService) CreateTenant(ctx context.Context, req *ragv1.CreateTenan
 	}
 
 	// Create vector storage for the tenant (dimension comes from the engine's embedder)
-	if err := s.engine.CreateNamespace(ctx, tenant.ID.String()); err != nil {
+	if err := s.engine.CreateNamespace(ctx, tenant.ID.UUIDString()); err != nil {
 		slog.Error("failed to create vector collection", "error", err, "tenant_id", tenant.ID)
 	}
 
@@ -226,7 +225,7 @@ func (s *TenantService) DeleteTenant(ctx context.Context, req *ragv1.DeleteTenan
 	}
 
 	// Delete vector collection
-	if err := s.engine.DeleteNamespace(ctx, id.String()); err != nil {
+	if err := s.engine.DeleteNamespace(ctx, id.UUIDString()); err != nil {
 		slog.Warn("failed to delete vector collection", "error", err, "tenant_id", id)
 	}
 
@@ -287,7 +286,7 @@ func (s *TenantService) Signup(ctx context.Context, req *ragv1.SignupRequest) (*
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "install_id must be a valid ULID")
 	}
-	tenantID := uuid.UUID(installULID)
+	tenantID := ids.ID(installULID)
 
 	// One tenant per installation
 	if _, err := s.repo.GetByID(ctx, tenantID); err == nil {
@@ -320,7 +319,7 @@ func (s *TenantService) Signup(ctx context.Context, req *ragv1.SignupRequest) (*
 		return nil, status.Errorf(codes.Internal, "failed to create tenant: %v", err)
 	}
 
-	if err := s.engine.CreateNamespace(ctx, tenant.ID.String()); err != nil {
+	if err := s.engine.CreateNamespace(ctx, tenant.ID.UUIDString()); err != nil {
 		slog.Error("failed to create vector collection", "error", err, "tenant_id", tenant.ID)
 	}
 
@@ -335,7 +334,7 @@ func (s *TenantService) Signup(ctx context.Context, req *ragv1.SignupRequest) (*
 
 // requireSelfOrAdmin allows the admin key, or a tenant key matching the
 // target tenant ID.
-func requireSelfOrAdmin(ctx context.Context, id uuid.UUID) error {
+func requireSelfOrAdmin(ctx context.Context, id ids.ID) error {
 	if auth.IsAdmin(ctx) {
 		return nil
 	}

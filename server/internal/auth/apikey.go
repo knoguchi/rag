@@ -6,7 +6,7 @@ import (
 	"crypto/subtle"
 	"strings"
 
-	"github.com/google/uuid"
+	"github.com/knoguchi/rag/internal/ids"
 	"github.com/knoguchi/rag/internal/repository"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -30,7 +30,7 @@ const (
 
 // TenantInfo holds tenant information extracted from authentication
 type TenantInfo struct {
-	ID     uuid.UUID
+	ID     ids.ID
 	Name   string
 	Config repository.TenantConfig
 }
@@ -252,10 +252,10 @@ func IsAdmin(ctx context.Context) bool {
 }
 
 // TenantIDFromContext extracts just the tenant ID from context
-func TenantIDFromContext(ctx context.Context) (uuid.UUID, bool) {
+func TenantIDFromContext(ctx context.Context) (ids.ID, bool) {
 	tenant, ok := TenantFromContext(ctx)
 	if !ok {
-		return uuid.Nil, false
+		return ids.Nil, false
 	}
 	return tenant.ID, true
 }

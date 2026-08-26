@@ -122,7 +122,7 @@ func reindexTenant(
 	tenant *repository.Tenant,
 	contextual bool,
 ) error {
-	ns := tenant.ID.String()
+	ns := tenant.ID.UUIDString()
 	slog.Info("reindexing tenant", "tenant_id", ns, "name", tenant.Name)
 
 	// Recreate the collection as hybrid
@@ -192,7 +192,7 @@ func reindexDocument(
 		}
 		for _, c := range stored {
 			chunks = append(chunks, ragcore.IngestedChunk{
-				ID:       c.ID.String(),
+				ID:       c.ID.UUIDString(),
 				Index:    c.ChunkIndex,
 				Content:  c.Content,
 				Metadata: c.Metadata,
@@ -232,7 +232,7 @@ func reindexDocument(
 		"source": doc.Source,
 		"title":  doc.Title,
 	}
-	if err := engine.IndexChunks(ctx, tenant.ID.String(), doc.ID.String(), chunks, defaults, true); err != nil {
+	if err := engine.IndexChunks(ctx, tenant.ID.UUIDString(), doc.ID.UUIDString(), chunks, defaults, true); err != nil {
 		return err
 	}
 

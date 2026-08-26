@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/uuid"
 	ragv1 "github.com/knoguchi/rag/gen/rag/v1"
 	"github.com/knoguchi/rag/internal/auth"
+	"github.com/knoguchi/rag/internal/ids"
 	"github.com/knoguchi/rag/internal/repository"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -15,52 +15,52 @@ import (
 // fakeDocRepo owns documents for exactly one tenant and enforces scoping the
 // way the SQL layer does: wrong tenant behaves like a missing row.
 type fakeDocRepo struct {
-	ownerID uuid.UUID
-	docID   uuid.UUID
+	ownerID ids.ID
+	docID   ids.ID
 }
 
 func (f *fakeDocRepo) Create(context.Context, *repository.Document) error { return nil }
-func (f *fakeDocRepo) GetByID(_ context.Context, tenantID, id uuid.UUID) (*repository.Document, error) {
+func (f *fakeDocRepo) GetByID(_ context.Context, tenantID, id ids.ID) (*repository.Document, error) {
 	if tenantID != f.ownerID || id != f.docID {
 		return nil, repository.ErrNotFound
 	}
 	return &repository.Document{ID: id, TenantID: tenantID, Status: "READY"}, nil
 }
-func (f *fakeDocRepo) GetByHash(context.Context, uuid.UUID, string) (*repository.Document, error) {
+func (f *fakeDocRepo) GetByHash(context.Context, ids.ID, string) (*repository.Document, error) {
 	return nil, repository.ErrNotFound
 }
-func (f *fakeDocRepo) ListBySource(context.Context, uuid.UUID, string) ([]*repository.Document, error) {
+func (f *fakeDocRepo) ListBySource(context.Context, ids.ID, string) ([]*repository.Document, error) {
 	return nil, nil
 }
-func (f *fakeDocRepo) List(context.Context, uuid.UUID, string, int, int) ([]*repository.Document, int, error) {
+func (f *fakeDocRepo) List(context.Context, ids.ID, string, int, int) ([]*repository.Document, int, error) {
 	return nil, 0, nil
 }
 func (f *fakeDocRepo) Update(context.Context, *repository.Document) error { return nil }
-func (f *fakeDocRepo) Delete(_ context.Context, tenantID, id uuid.UUID) error {
+func (f *fakeDocRepo) Delete(_ context.Context, tenantID, id ids.ID) error {
 	if tenantID != f.ownerID || id != f.docID {
 		return repository.ErrNotFound
 	}
 	return nil
 }
 func (f *fakeDocRepo) CreateChunks(context.Context, []*repository.DocumentChunk) error { return nil }
-func (f *fakeDocRepo) GetChunks(_ context.Context, tenantID, docID uuid.UUID, _, _ int) ([]*repository.DocumentChunk, error) {
+func (f *fakeDocRepo) GetChunks(_ context.Context, tenantID, docID ids.ID, _, _ int) ([]*repository.DocumentChunk, error) {
 	if tenantID != f.ownerID || docID != f.docID {
 		return nil, nil
 	}
-	return []*repository.DocumentChunk{{ID: uuid.New(), DocumentID: docID, TenantID: tenantID, Content: "c"}}, nil
+	return []*repository.DocumentChunk{{ID: ids.New(), DocumentID: docID, TenantID: tenantID, Content: "c"}}, nil
 }
-func (f *fakeDocRepo) DeleteChunks(context.Context, uuid.UUID, uuid.UUID) error { return nil }
+func (f *fakeDocRepo) DeleteChunks(context.Context, ids.ID, ids.ID) error { return nil }
 
 var _ repository.DocumentRepository = (*fakeDocRepo)(nil)
 
-func ctxAsTenant(id uuid.UUID) context.Context {
+func ctxAsTenant(id ids.ID) context.Context {
 	return auth.ContextWithTenant(context.Background(), &auth.TenantInfo{ID: id, Name: "t"})
 }
 
 func TestGetDocument_TenantScoping(t *testing.T) {
-	owner := uuid.New()
-	other := uuid.New()
-	docID := uuid.New()
+	owner := ids.New()
+	other := ids.New()
+	docID := ids.New()
 	svc := NewDocumentService(&fakeDocRepo{ownerID: owner, docID: docID}, nil, nil)
 
 	// Owner can read its document
@@ -82,9 +82,9 @@ func TestGetDocument_TenantScoping(t *testing.T) {
 }
 
 func TestGetDocumentChunks_TenantScoping(t *testing.T) {
-	owner := uuid.New()
-	other := uuid.New()
-	docID := uuid.New()
+	owner := ids.New()
+	other := ids.New()
+	docID := ids.New()
 	svc := NewDocumentService(&fakeDocRepo{ownerID: owner, docID: docID}, nil, nil)
 
 	resp, err := svc.GetDocumentChunks(ctxAsTenant(owner), &ragv1.GetDocumentChunksRequest{DocumentId: docID.String()})
@@ -107,7 +107,7 @@ type fakeTenantRepo struct {
 }
 
 func (f *fakeTenantRepo) Create(context.Context, *repository.Tenant, string) error { return nil }
-func (f *fakeTenantRepo) GetByID(_ context.Context, id uuid.UUID) (*repository.Tenant, error) {
+func (f *fakeTenantRepo) GetByID(_ context.Context, id ids.ID) (*repository.Tenant, error) {
 	if f.tenant != nil && f.tenant.ID == id {
 		return f.tenant, nil
 	}
@@ -119,10 +119,10 @@ func (f *fakeTenantRepo) GetByAPIKey(context.Context, string) (*repository.Tenan
 func (f *fakeTenantRepo) List(context.Context, int, int) ([]*repository.Tenant, int, error) {
 	return nil, 0, nil
 }
-func (f *fakeTenantRepo) Update(context.Context, *repository.Tenant) error      { return nil }
-func (f *fakeTenantRepo) Delete(context.Context, uuid.UUID) error               { return nil }
-func (f *fakeTenantRepo) UpdateAPIKey(context.Context, uuid.UUID, string) error { return nil }
-func (f *fakeTenantRepo) UpdateUsage(context.Context, uuid.UUID, repository.TenantUsage) error {
+func (f *fakeTenantRepo) Update(context.Context, *repository.Tenant) error   { return nil }
+func (f *fakeTenantRepo) Delete(context.Context, ids.ID) error               { return nil }
+func (f *fakeTenantRepo) UpdateAPIKey(context.Context, ids.ID, string) error { return nil }
+func (f *fakeTenantRepo) UpdateUsage(context.Context, ids.ID, repository.TenantUsage) error {
 	return nil
 }
 func (f *fakeTenantRepo) ListExpired(context.Context) ([]*repository.Tenant, error) {
@@ -132,8 +132,8 @@ func (f *fakeTenantRepo) ListExpired(context.Context) ([]*repository.Tenant, err
 var _ repository.TenantRepository = (*fakeTenantRepo)(nil)
 
 func TestGetTenant_SelfOrAdmin(t *testing.T) {
-	self := uuid.New()
-	other := uuid.New()
+	self := ids.New()
+	other := ids.New()
 	repo := &fakeTenantRepo{tenant: &repository.Tenant{ID: self, Name: "self"}}
 	svc := NewTenantService(repo, nil, nil)
 

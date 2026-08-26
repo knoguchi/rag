@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/knoguchi/rag/internal/ids"
 	"github.com/knoguchi/rag/internal/ragcore/chunk"
 )
 
@@ -16,7 +16,7 @@ var ErrNotFound = errors.New("not found")
 // Tenant represents a tenant in the system. API keys are stored only as a
 // SHA-256 hash; KeyPrefix holds the first characters for display.
 type Tenant struct {
-	ID         uuid.UUID
+	ID         ids.ID
 	Name       string
 	KeyPrefix  string
 	Config     TenantConfig
@@ -52,8 +52,8 @@ type TenantUsage struct {
 
 // Document represents an ingested document
 type Document struct {
-	ID           uuid.UUID
-	TenantID     uuid.UUID
+	ID           ids.ID
+	TenantID     ids.ID
 	Source       string
 	Title        string
 	ContentHash  string
@@ -67,9 +67,9 @@ type Document struct {
 
 // DocumentChunk represents a chunk of a document
 type DocumentChunk struct {
-	ID         uuid.UUID
-	DocumentID uuid.UUID
-	TenantID   uuid.UUID
+	ID         ids.ID
+	DocumentID ids.ID
+	TenantID   ids.ID
 	ChunkIndex int
 	Content    string
 	Metadata   map[string]string
@@ -78,8 +78,8 @@ type DocumentChunk struct {
 
 // CrawlJob represents a web crawling job
 type CrawlJob struct {
-	ID           uuid.UUID
-	TenantID     uuid.UUID
+	ID           ids.ID
+	TenantID     ids.ID
 	Type         string
 	Status       string
 	RootURL      string
@@ -110,13 +110,13 @@ type SpiderConfig struct {
 
 // CrawledPage represents a page that was crawled
 type CrawledPage struct {
-	ID            uuid.UUID
-	JobID         uuid.UUID
+	ID            ids.ID
+	JobID         ids.ID
 	URL           string
 	Title         string
 	Status        string
 	ErrorMessage  string
-	DocumentID    *uuid.UUID
+	DocumentID    *ids.ID
 	ContentLength int
 	Depth         int
 	CrawledAt     *time.Time
@@ -126,15 +126,15 @@ type CrawledPage struct {
 type TenantRepository interface {
 	// Create persists the tenant; apiKey is the plaintext key, stored hashed.
 	Create(ctx context.Context, tenant *Tenant, apiKey string) error
-	GetByID(ctx context.Context, id uuid.UUID) (*Tenant, error)
+	GetByID(ctx context.Context, id ids.ID) (*Tenant, error)
 	// GetByAPIKey looks a tenant up by plaintext API key (hashed internally).
 	GetByAPIKey(ctx context.Context, apiKey string) (*Tenant, error)
 	List(ctx context.Context, limit, offset int) ([]*Tenant, int, error)
 	Update(ctx context.Context, tenant *Tenant) error
-	Delete(ctx context.Context, id uuid.UUID) error
+	Delete(ctx context.Context, id ids.ID) error
 	// UpdateAPIKey replaces the tenant's API key (stored hashed).
-	UpdateAPIKey(ctx context.Context, id uuid.UUID, newAPIKey string) error
-	UpdateUsage(ctx context.Context, id uuid.UUID, usage TenantUsage) error
+	UpdateAPIKey(ctx context.Context, id ids.ID, newAPIKey string) error
+	UpdateUsage(ctx context.Context, id ids.ID, usage TenantUsage) error
 	// ListExpired returns tenants whose retention policy has lapsed: a
 	// non-zero retention_days config and no activity for that many days.
 	ListExpired(ctx context.Context) ([]*Tenant, error)
@@ -145,30 +145,30 @@ type TenantRepository interface {
 // to another tenant is indistinguishable from a missing one (ErrNotFound).
 type DocumentRepository interface {
 	Create(ctx context.Context, doc *Document) error
-	GetByID(ctx context.Context, tenantID, id uuid.UUID) (*Document, error)
-	GetByHash(ctx context.Context, tenantID uuid.UUID, hash string) (*Document, error)
+	GetByID(ctx context.Context, tenantID, id ids.ID) (*Document, error)
+	GetByHash(ctx context.Context, tenantID ids.ID, hash string) (*Document, error)
 	// ListBySource returns all documents a tenant has for a given source
 	// (e.g. a URL); used to replace stale versions on re-ingestion.
-	ListBySource(ctx context.Context, tenantID uuid.UUID, source string) ([]*Document, error)
-	List(ctx context.Context, tenantID uuid.UUID, status string, limit, offset int) ([]*Document, int, error)
+	ListBySource(ctx context.Context, tenantID ids.ID, source string) ([]*Document, error)
+	List(ctx context.Context, tenantID ids.ID, status string, limit, offset int) ([]*Document, int, error)
 	Update(ctx context.Context, doc *Document) error
-	Delete(ctx context.Context, tenantID, id uuid.UUID) error
+	Delete(ctx context.Context, tenantID, id ids.ID) error
 
 	// Chunk operations
 	CreateChunks(ctx context.Context, chunks []*DocumentChunk) error
-	GetChunks(ctx context.Context, tenantID, documentID uuid.UUID, limit, offset int) ([]*DocumentChunk, error)
-	DeleteChunks(ctx context.Context, tenantID, documentID uuid.UUID) error
+	GetChunks(ctx context.Context, tenantID, documentID ids.ID, limit, offset int) ([]*DocumentChunk, error)
+	DeleteChunks(ctx context.Context, tenantID, documentID ids.ID) error
 }
 
 // CrawlJobRepository defines operations for crawl job persistence
 type CrawlJobRepository interface {
 	Create(ctx context.Context, job *CrawlJob) error
-	GetByID(ctx context.Context, id uuid.UUID) (*CrawlJob, error)
-	List(ctx context.Context, tenantID uuid.UUID, status string, limit, offset int) ([]*CrawlJob, int, error)
+	GetByID(ctx context.Context, id ids.ID) (*CrawlJob, error)
+	List(ctx context.Context, tenantID ids.ID, status string, limit, offset int) ([]*CrawlJob, int, error)
 	Update(ctx context.Context, job *CrawlJob) error
 
 	// Page operations
 	CreatePage(ctx context.Context, page *CrawledPage) error
 	UpdatePage(ctx context.Context, page *CrawledPage) error
-	GetPages(ctx context.Context, jobID uuid.UUID, status string, limit, offset int) ([]*CrawledPage, int, error)
+	GetPages(ctx context.Context, jobID ids.ID, status string, limit, offset int) ([]*CrawledPage, int, error)
 }

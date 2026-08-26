@@ -8,8 +8,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/knoguchi/rag/internal/ids"
 	"github.com/knoguchi/rag/internal/repository"
 )
 
@@ -58,7 +58,7 @@ func (r *TenantRepo) Create(ctx context.Context, tenant *repository.Tenant, apiK
 }
 
 // GetByID retrieves a tenant by ID
-func (r *TenantRepo) GetByID(ctx context.Context, id uuid.UUID) (*repository.Tenant, error) {
+func (r *TenantRepo) GetByID(ctx context.Context, id ids.ID) (*repository.Tenant, error) {
 	query := `
 		SELECT id, name, key_prefix, config, created_at, updated_at
 		FROM tenants
@@ -146,7 +146,7 @@ func (r *TenantRepo) scanTenant(ctx context.Context, query string, args ...any) 
 	return &tenant, nil
 }
 
-func (r *TenantRepo) getUsage(ctx context.Context, tenantID uuid.UUID) (*repository.TenantUsage, error) {
+func (r *TenantRepo) getUsage(ctx context.Context, tenantID ids.ID) (*repository.TenantUsage, error) {
 	var usage repository.TenantUsage
 
 	// Count documents
@@ -229,7 +229,7 @@ func (r *TenantRepo) Update(ctx context.Context, tenant *repository.Tenant) erro
 }
 
 // Delete deletes a tenant
-func (r *TenantRepo) Delete(ctx context.Context, id uuid.UUID) error {
+func (r *TenantRepo) Delete(ctx context.Context, id ids.ID) error {
 	result, err := r.db.Pool.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete tenant: %w", err)
@@ -241,7 +241,7 @@ func (r *TenantRepo) Delete(ctx context.Context, id uuid.UUID) error {
 }
 
 // UpdateAPIKey updates a tenant's API key (stored hashed)
-func (r *TenantRepo) UpdateAPIKey(ctx context.Context, id uuid.UUID, newAPIKey string) error {
+func (r *TenantRepo) UpdateAPIKey(ctx context.Context, id ids.ID, newAPIKey string) error {
 	result, err := r.db.Pool.Exec(ctx,
 		`UPDATE tenants SET api_key_hash = $2, key_prefix = $3, updated_at = NOW() WHERE id = $1`,
 		id, hashAPIKey(newAPIKey), keyPrefix(newAPIKey))
@@ -255,7 +255,7 @@ func (r *TenantRepo) UpdateAPIKey(ctx context.Context, id uuid.UUID, newAPIKey s
 }
 
 // UpdateUsage updates tenant usage statistics (called periodically)
-func (r *TenantRepo) UpdateUsage(ctx context.Context, id uuid.UUID, usage repository.TenantUsage) error {
+func (r *TenantRepo) UpdateUsage(ctx context.Context, id ids.ID, usage repository.TenantUsage) error {
 	// Usage is calculated on-the-fly from documents table, so this is a no-op
 	// Could be used for caching or storing query counts
 	return nil

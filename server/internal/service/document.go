@@ -14,7 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	ragv1 "github.com/knoguchi/rag/gen/rag/v1"
 	"github.com/knoguchi/rag/internal/auth"
 	"github.com/knoguchi/rag/internal/ids"
@@ -135,7 +134,7 @@ func (s *DocumentService) IngestDocument(ctx context.Context, req *ragv1.IngestD
 		for _, old := range stale {
 			slog.Info("replacing stale document for source",
 				"doc_id", old.ID, "source", req.Source, "tenant_id", tenantID)
-			if err := s.engine.DeleteDocument(ctx, tenantID.String(), old.ID.String()); err != nil {
+			if err := s.engine.DeleteDocument(ctx, tenantID.UUIDString(), old.ID.UUIDString()); err != nil {
 				slog.Warn("failed to delete stale vectors", "error", err, "doc_id", old.ID)
 			}
 			if err := s.docRepo.DeleteChunks(ctx, tenantID, old.ID); err != nil {
@@ -340,7 +339,7 @@ func (s *DocumentService) DeleteDocument(ctx context.Context, req *ragv1.DeleteD
 	}
 
 	// Delete vectors from vector store
-	if err := s.engine.DeleteDocument(ctx, tenant.ID.String(), doc.ID.String()); err != nil {
+	if err := s.engine.DeleteDocument(ctx, tenant.ID.UUIDString(), doc.ID.UUIDString()); err != nil {
 		slog.Warn("failed to delete vectors", "error", err, "doc_id", doc.ID)
 	}
 
@@ -416,14 +415,14 @@ func (s *DocumentService) GetDocumentChunks(ctx context.Context, req *ragv1.GetD
 
 // ingestedToDocumentChunks converts engine-ingested chunks to repository
 // DocumentChunks, preserving the chunk IDs used as vector point IDs.
-func ingestedToDocumentChunks(chunks []ragcore.IngestedChunk, tenantID, documentID uuid.UUID) []*repository.DocumentChunk {
+func ingestedToDocumentChunks(chunks []ragcore.IngestedChunk, tenantID, documentID ids.ID) []*repository.DocumentChunk {
 	docChunks := make([]*repository.DocumentChunk, len(chunks))
 	now := time.Now()
 
 	for i, c := range chunks {
-		id, err := uuid.Parse(c.ID)
+		id, err := ids.Parse(c.ID)
 		if err != nil {
-			id = uuid.New()
+			id = ids.New()
 		}
 		docChunks[i] = &repository.DocumentChunk{
 			ID:         id,
@@ -450,8 +449,8 @@ func (s *DocumentService) processDocument(ctx context.Context, doc *repository.D
 
 	// Run the core ingestion pipeline (chunk -> persist -> embed -> upsert)
 	ingested, err := s.engine.Ingest(ctx, ragcore.IngestInput{
-		Namespace:  doc.TenantID.String(),
-		DocumentID: doc.ID.String(),
+		Namespace:  doc.TenantID.UUIDString(),
+		DocumentID: doc.ID.UUIDString(),
 		Content:    content,
 		Metadata:   doc.Metadata,
 		ChunkDefaults: map[string]string{
